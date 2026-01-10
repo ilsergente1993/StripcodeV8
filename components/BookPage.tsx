@@ -9,8 +9,8 @@ interface BookPageProps {
 const TXT_1_CHUNK = "KEY_NOT_IN_LOCK_BUT_IN_HAND"; 
 const TXT_2_CHUNK = "V8_HANDSHAKE_INIT_2049_SECURE";
 const TXT_3_CHUNK = "DATA_CORRECTION_ALPHA_NINE_ZERO";
-const TXT_INLINE_1 = "SUBJECT_ELARA";
-const TXT_INLINE_2 = "ACCESS_GRANTED";
+const TXT_INLINE_1 = "PG_142_REF_0A";
+const TXT_INLINE_2 = "PG_142_LOCK";
 const TXT_FOOTER_LONG = "ARCHIVE_RECORD_744_992_X_FINAL_ENTRY_LOG_SYSTEM_OFFLINE_TERMINATED_BY_ADMIN_V8_SIG_END";
 
 export const BookPage: React.FC<BookPageProps> = () => {
@@ -45,7 +45,7 @@ export const BookPage: React.FC<BookPageProps> = () => {
             <h2 className="text-2xl font-bold mb-8 text-neutral-800">Chapter 4: The Protocol</h2>
 
             <p className="mb-4">
-                The room was silent. Elara adjusted her glasses, peering at the faded manuscript. "It's not just ink," she whispered. "It's executable code." She traced the margin, where the text seemed to fracture. It was specifically labeled <span className="inline-block align-middle mx-1"><StripCode text={TXT_INLINE_1} height={14} showLabels={false} revealTextOnHover={true} /></span> in the margin notes.
+                The room was silent. Elara adjusted her glasses, peering at the faded manuscript. "It's not just ink," she whispered. "It's executable code." She traced the margin, where the text seemed to fracture. It was specifically labeled <span className="inline-block align-middle mx-1"><StripCode text={TXT_INLINE_1} height={14} showLabels={false} revealTextOnHover={true} disableReflow={true} detailedTooltip={false} /></span> in the margin notes.
             </p>
 
             {/* Block 1 */}
@@ -56,11 +56,12 @@ export const BookPage: React.FC<BookPageProps> = () => {
                     showLabels={false}
                     verticalGap={verticalGap}
                     revealTextOnHover={true}
+                    detailedTooltip={false}
                 />
             </div>
 
             <p className="mb-4">
-                The scanner chirped. A simple key, likely for a physical locker. But as she turned the page, the density of the markings increased. The paragraphs themselves were merely carriers for a deeper signal. A signal that screamed <span className="inline-block align-middle mx-1"><StripCode text={TXT_INLINE_2} height={14} showLabels={false} revealTextOnHover={true} /></span> to anyone watching.
+                The scanner chirped. A simple key, likely for a physical locker. But as she turned the page, the density of the markings increased. The paragraphs themselves were merely carriers for a deeper signal. A signal that screamed <span className="inline-block align-middle mx-1"><StripCode text={TXT_INLINE_2} height={14} showLabels={false} revealTextOnHover={true} disableReflow={true} detailedTooltip={false} /></span> to anyone watching.
             </p>
             
             <p className="mb-4">
@@ -75,6 +76,7 @@ export const BookPage: React.FC<BookPageProps> = () => {
                     showLabels={false}
                     verticalGap={verticalGap}
                     revealTextOnHover={true}
+                    detailedTooltip={false}
                 />
             </div>
 
@@ -90,6 +92,7 @@ export const BookPage: React.FC<BookPageProps> = () => {
                     showLabels={false}
                     verticalGap={verticalGap}
                     revealTextOnHover={true}
+                    detailedTooltip={false}
                 />
             </div>
 
@@ -105,14 +108,14 @@ export const BookPage: React.FC<BookPageProps> = () => {
                     <span>1.</span>
                     <div className="w-full">
                         <p className="mb-1">Primary substrate layer ID.</p>
-                        <div className="grayscale opacity-60"><StripCode text="REF_ID_001" height={10} showLabels={false} revealTextOnHover={true} /></div>
+                        <div className="grayscale opacity-60"><StripCode text="REF_ID_001" height={10} showLabels={false} revealTextOnHover={true} detailedTooltip={false} disableReflow={true} /></div>
                     </div>
                 </div>
                 <div className="flex gap-2 items-start">
                     <span>2.</span>
                     <div className="w-full">
                         <p className="mb-1">Secondary auth key (Level 2).</p>
-                        <div className="grayscale opacity-60"><StripCode text="SEC_AUTH" height={10} showLabels={false} revealTextOnHover={true} /></div>
+                        <div className="grayscale opacity-60"><StripCode text="SEC_AUTH" height={10} showLabels={false} revealTextOnHover={true} detailedTooltip={false} disableReflow={true} /></div>
                     </div>
                 </div>
              </div>
@@ -123,7 +126,8 @@ export const BookPage: React.FC<BookPageProps> = () => {
                     text={TXT_FOOTER_LONG} 
                     height={24} 
                     showLabels={false} 
-                    revealTextOnHover={true} 
+                    revealTextOnHover={true}
+                    detailedTooltip={false}
                 />
              </div>
         </div>

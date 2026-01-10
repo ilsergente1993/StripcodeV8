@@ -14,6 +14,7 @@ interface StripCodeProps {
   verticalGap?: number;
   revealTextOnHover?: boolean;
   disableReflow?: boolean;
+  detailedTooltip?: boolean;
 }
 
 interface TooltipData {
@@ -119,9 +120,6 @@ const ChunkCanvas: React.FC<ChunkCanvasProps> = ({ chunk, height, debugMode, pac
     if (debugMode) {
         
         // A. Draw Horizontal Row Highlights (Clock & Parity)
-        // Only draw these if we aren't hovering a specific column to avoid visual clutter, 
-        // OR draw them faintly behind. Let's draw them behind.
-        
         // Row 0: Clock A
         ctx.fillStyle = ROW_HIGHLIGHTS.CLOCK.fill;
         ctx.fillRect(0, 0, width, cellSize);
@@ -158,7 +156,6 @@ const ChunkCanvas: React.FC<ChunkCanvasProps> = ({ chunk, height, debugMode, pac
         }
 
         // C. Draw Zones
-        // We draw in two passes: Non-active first, then Active (hovered) last to pop on top.
         const activeZone = localHoverCol !== null 
             ? zones.find(z => localHoverCol >= z.start && localHoverCol < (z.start + z.length)) 
             : null;
@@ -191,22 +188,15 @@ const ChunkCanvas: React.FC<ChunkCanvasProps> = ({ chunk, height, debugMode, pac
                 const x = activeZone.start * cellSize;
                 const w = activeZone.length * cellSize;
                 const h = height;
-
-                // Expanded Geometry (Increase margin visually)
-                // We expand by 2 pixels on all sides (clipping at canvas edges)
-                // Note: Canvas clips automatically to its bounds, so we don't need to clamp manually for drawing commands,
-                // but visual effect works best on internal boundaries.
                 const expansion = 4; 
                 
-                // Active Background (Matches border color but transparent)
+                // Active Background
                 ctx.fillStyle = style.hoverFill;
                 ctx.fillRect(x - expansion/2, 0, w + expansion, h);
 
-                // Active Border (Thicker, expanded)
+                // Active Border
                 ctx.strokeStyle = style.stroke;
                 ctx.lineWidth = 3;
-                
-                // Use strokeRect with slight expansion
                 ctx.strokeRect(x - 2, 0, w + 4, h);
             }
         }
@@ -311,7 +301,8 @@ const StripCode: React.FC<StripCodeProps> = ({
     showLabels = true, 
     verticalGap,
     revealTextOnHover = false,
-    disableReflow = false
+    disableReflow = false,
+    detailedTooltip = true
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState<number>(0);
@@ -353,22 +344,26 @@ const StripCode: React.FC<StripCodeProps> = ({
   const customStyle = verticalGap !== undefined ? { rowGap: `${verticalGap}px` } : {};
   const containerOverflowClass = disableReflow ? 'overflow-x-auto whitespace-nowrap' : 'flex-wrap';
 
+  // Determine outer container layout
+  // If disableReflow is true (inline mode), we use inline-block and w-auto
+  const outerLayoutClass = disableReflow ? 'inline-block w-auto' : 'w-full';
+
   return (
     <div 
-        className="relative group/strip w-full"
+        className={`relative group/strip ${outerLayoutClass}`}
         onMouseEnter={() => setIsContainerHovered(true)}
         onMouseLeave={() => setIsContainerHovered(false)}
     >
         {revealTextOnHover && isContainerHovered && (
             <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 z-40 bg-neutral-900 text-white text-[11px] font-mono px-3 py-1.5 rounded shadow-xl border border-neutral-700 whitespace-nowrap pointer-events-none opacity-0 group-hover/strip:opacity-100 transition-opacity duration-200">
-                "{text}"
+                {text}
                 <div className="absolute bottom-[-4px] left-1/2 transform -translate-x-1/2 w-2 h-2 bg-neutral-900 border-r border-b border-neutral-700 rotate-45"></div>
             </div>
         )}
 
         <div
             ref={containerRef}
-            className={`w-full flex content-start items-start justify-start gap-x-0 ${gapClass} ${gapClass ? '' : 'mb-6'} ${containerOverflowClass} ${className} ${disableReflow ? 'scrollbar-thin' : ''}`}
+            className={`flex content-start items-start justify-start gap-x-0 ${gapClass} ${gapClass ? '' : 'mb-6'} ${containerOverflowClass} ${className} ${disableReflow ? 'scrollbar-thin w-auto' : 'w-full'}`}
             style={customStyle}
         >
             {chunks.length === 0 && text.length > 0 && !disableReflow ? (
@@ -380,7 +375,7 @@ const StripCode: React.FC<StripCodeProps> = ({
             {chunks.map((chunk, index) => (
             <div 
                 key={index} 
-                className={`flex-none mr-4 group animate-chunk-entry ${disableReflow ? 'inline-block' : ''}`}
+                className={`flex-none ${disableReflow ? 'mr-0' : 'mr-4'} group animate-chunk-entry ${disableReflow ? 'inline-block' : ''}`}
                 style={{ animationDelay: `${index * 50}ms` }}
             >
                 <ChunkCanvas 
@@ -398,7 +393,7 @@ const StripCode: React.FC<StripCodeProps> = ({
             </div>
             ))}
         </div>
-        <Tooltip data={tooltip} />
+        {detailedTooltip && <Tooltip data={tooltip} />}
     </div>
   );
 };
