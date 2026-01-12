@@ -229,7 +229,34 @@ const ChunkCanvas: React.FC<ChunkCanvasProps> = ({ chunk, height, debugMode, pac
   );
 };
 
-const Tooltip: React.FC<{ data: TooltipData }> = ({ data }) => {
+// --- PORTAL TOOLTIP COMPONENTS ---
+
+const RevealTooltip: React.FC<{ text: string, rect: DOMRect | null, visible: boolean }> = ({ text, rect, visible }) => {
+    if (!visible || !rect) return null;
+
+    // Center tooltip above the element
+    const top = rect.top - 12; // 12px gap
+    const left = rect.left + (rect.width / 2);
+
+    return createPortal(
+        <div 
+            className="fixed z-[10000] pointer-events-none flex flex-col items-center transition-opacity duration-200"
+            style={{ 
+                top: top, 
+                left: left, 
+                transform: 'translate(-50%, -100%)' 
+            }}
+        >
+            <div className="bg-neutral-900 text-white text-[11px] font-mono px-3 py-1.5 rounded shadow-xl border border-neutral-700 whitespace-nowrap relative">
+                {text}
+                <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-neutral-900 border-r border-b border-neutral-700 rotate-45"></div>
+            </div>
+        </div>,
+        document.body
+    );
+};
+
+const DetailedTooltip: React.FC<{ data: TooltipData }> = ({ data }) => {
   if (!data.visible) return null;
 
   const isRowZone = data.zone.startsWith('CLOCK') || data.zone === 'PARITY' || data.zone === 'SEPARATOR' || data.zone === 'TIMELINE';
@@ -279,6 +306,7 @@ const StripCode: React.FC<StripCodeProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState<number>(0);
+  const [containerRect, setContainerRect] = useState<DOMRect | null>(null);
   const [tooltip, setTooltip] = useState<TooltipData>({ visible: false, x: 0, y: 0, packetIdx: 0, col: 0, row: 0, zone: '', bitValue: 0 });
   const [isContainerHovered, setIsContainerHovered] = useState(false);
 
@@ -292,6 +320,24 @@ const StripCode: React.FC<StripCodeProps> = ({
     observer.observe(containerRef.current);
     return () => observer.disconnect();
   }, []);
+
+  // Update container rect for Portal positioning on interaction
+  const updateRect = () => {
+    if (containerRef.current) {
+        setContainerRect(containerRef.current.getBoundingClientRect());
+    }
+  };
+
+  useEffect(() => {
+    if (isContainerHovered) {
+        window.addEventListener('scroll', updateRect, true);
+        window.addEventListener('resize', updateRect);
+        return () => {
+            window.removeEventListener('scroll', updateRect, true);
+            window.removeEventListener('resize', updateRect);
+        };
+    }
+  }, [isContainerHovered]);
 
   const chunks = useMemo(() => {
     const effectiveWidth = disableReflow ? 50000 : containerWidth;
@@ -313,6 +359,11 @@ const StripCode: React.FC<StripCodeProps> = ({
     }
   };
 
+  const handleMouseEnter = (e: React.MouseEvent) => {
+      setIsContainerHovered(true);
+      updateRect();
+  };
+
   const gapClass = verticalGap !== undefined ? '' : 'gap-y-6';
   const customStyle = verticalGap !== undefined ? { rowGap: `${verticalGap}px` } : {};
   const containerOverflowClass = disableReflow ? 'overflow-x-auto whitespace-nowrap' : 'flex-wrap';
@@ -321,15 +372,10 @@ const StripCode: React.FC<StripCodeProps> = ({
   return (
     <div 
         className={`relative group/strip ${outerLayoutClass}`}
-        onMouseEnter={() => setIsContainerHovered(true)}
+        onMouseEnter={handleMouseEnter}
         onMouseLeave={() => setIsContainerHovered(false)}
     >
-        {revealTextOnHover && isContainerHovered && (
-            <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 z-[9990] bg-neutral-900 text-white text-[11px] font-mono px-3 py-1.5 rounded shadow-xl border border-neutral-700 whitespace-nowrap pointer-events-none opacity-0 group-hover/strip:opacity-100 transition-opacity duration-200">
-                {text}
-                <div className="absolute bottom-[-4px] left-1/2 transform -translate-x-1/2 w-2 h-2 bg-neutral-900 border-r border-b border-neutral-700 rotate-45"></div>
-            </div>
-        )}
+        {revealTextOnHover && <RevealTooltip text={text} rect={containerRect} visible={isContainerHovered} />}
 
         <div
             ref={containerRef}
@@ -363,7 +409,7 @@ const StripCode: React.FC<StripCodeProps> = ({
             </div>
             ))}
         </div>
-        {detailedTooltip && <Tooltip data={tooltip} />}
+        {detailedTooltip && <DetailedTooltip data={tooltip} />}
     </div>
   );
 };
