@@ -9,7 +9,7 @@ export const ScientificPaper: React.FC = () => {
         {/* HEADER */}
         <div className="text-center mb-8">
           <h1 className="text-[18pt] font-bold leading-tight mb-2">
-            On the Security of the V8 Optical Protocol<br/>for Analog Data Retention
+            On the Security of the V9 Optical Protocol<br/>for Analog Data Retention
           </h1>
           <div className="text-[11pt] italic mb-4">
             Dr. Elara Vance<sup>1</sup>, J. Doe<sup>2</sup>
@@ -28,19 +28,19 @@ export const ScientificPaper: React.FC = () => {
                 <div>
                     <strong className="block text-[9pt] font-bold border-b border-black mb-1 uppercase">Abstract</strong>
                     <p className="indent-4">
-                        We present a novel analysis of the Stripcode V8 protocol. Unlike traditional QR matrices, V8 utilizes a linear clock-phasing mechanism 
+                        We present a novel analysis of the Stripcode V9 protocol. Unlike traditional QR matrices, V9 utilizes a linear Timeline mechanism 
                         <span className="inline-block align-middle mx-1 opacity-80" style={{ height: '14px' }}>
                              {/* Inline Stripcode Example */}
-                             <StripCode text="CLOCK_PHASE_SYNC" height={14} showLabels={false} verticalGap={0} revealTextOnHover={true} detailedTooltip={false} disableReflow={true} />
+                             <StripCode text="TIMELINE_PHASE_SYNC" height={14} showLabels={false} verticalGap={0} revealTextOnHover={true} detailedTooltip={false} disableReflow={true} />
                         </span>
-                        to ensure synchronization across curved surfaces. This paper demonstrates that while V8 is robust against shear distortion, it remains vulnerable to high-frequency optical noise.
+                        to ensure synchronization across curved surfaces. This paper demonstrates that while V9 is robust against shear distortion, it remains vulnerable to high-frequency optical noise.
                     </p>
                 </div>
 
                 <div>
                     <strong className="block text-[9pt] font-bold border-b border-black mb-1 uppercase">1. Introduction</strong>
                     <p className="indent-4 mb-2">
-                        The need for high-density, analog-compatible storage has driven the development of linear barcodes. The V8 standard [1] introduces a unique "split-byte" architecture.
+                        The need for high-density, analog-compatible storage has driven the development of linear barcodes. The V9 standard [1] introduces a unique "split-byte" architecture with absolute positioning.
                     </p>
                     <p className="indent-4">
                         Data is encoded in 4-bit nibbles, protected by a rolling hash ECC [2]. The physical layer requires precise printing tolerances.
@@ -50,7 +50,7 @@ export const ScientificPaper: React.FC = () => {
                 <div>
                     <strong className="block text-[9pt] font-bold border-b border-black mb-1 uppercase">2. Protocol Analysis</strong>
                     <p className="indent-4 mb-2">
-                        The core innovation is the <span className="italic">Liquid Reflow</span> capability.
+                        The core innovation is the <span className="italic">Liquid Reflow</span> capability combined with the Row 7 Timeline.
                     </p>
                     <div className="my-2 border-t border-b border-black py-2">
                         <figure className="text-center">
@@ -87,7 +87,7 @@ export const ScientificPaper: React.FC = () => {
                         <li className="flex gap-2">
                             <span className="font-bold">[1]</span>
                             <div className="flex flex-col w-full">
-                                <span>V8 Standards Committee. <i>"Optical Data Retention in Paper Substrates."</i> 2024.</span>
+                                <span>V9 Standards Committee. <i>"Optical Data Retention in Paper Substrates."</i> 2024.</span>
                                 <div className="mt-1 opacity-80 grayscale">
                                     <StripCode text="REF_STD_COMM_24" height={12} showLabels={false} revealTextOnHover={true} detailedTooltip={false} disableReflow={true} />
                                 </div>

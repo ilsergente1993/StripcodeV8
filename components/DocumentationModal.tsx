@@ -22,8 +22,8 @@ export const DocumentationModal: React.FC<DocumentationModalProps> = ({ isOpen, 
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-neutral-100 bg-white sticky top-0 z-10">
           <div>
-            <h2 className="text-xl font-bold text-neutral-900">Stripcode V8 Datasheet</h2>
-            <p className="text-xs text-neutral-400 uppercase tracking-wide">Rev. A-G // Standard Protocol</p>
+            <h2 className="text-xl font-bold text-neutral-900">Stripcode V9 Datasheet</h2>
+            <p className="text-xs text-neutral-400 uppercase tracking-wide">Rev. B-2 // Enhanced Protocol</p>
           </div>
           <button 
             onClick={onClose}
@@ -43,13 +43,12 @@ export const DocumentationModal: React.FC<DocumentationModalProps> = ({ isOpen, 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-sm">
                 <div>
                     <p className="mb-2"><span className="font-semibold text-neutral-900">Row Matrix:</span> 8 Rows (Fixed Height)</p>
-                    <p className="mb-2"><span className="font-semibold text-neutral-900">Column:</span> 1 Byte Vertical Slice</p>
                     <ul className="list-disc pl-5 space-y-1 text-neutral-500 mt-4">
                         <li><strong className="text-neutral-700">R0:</strong> Clock A (Alternating 1/0)</li>
                         <li><strong className="text-neutral-700">R1-R4:</strong> Data Nibble (MSB...LSB)</li>
                         <li><strong className="text-neutral-700">R5:</strong> Parity (XOR R1-R4)</li>
-                        <li><strong className="text-neutral-700">R6:</strong> Separator (Always 0)</li>
-                        <li><strong className="text-neutral-700">R7:</strong> Clock B (Inverse R0)</li>
+                        <li><strong className="text-neutral-700">R6:</strong> Separator</li>
+                        <li><strong className="text-blue-600">R7:</strong> Timeline (Sync + Pos)</li>
                     </ul>
                 </div>
                 <div>
@@ -64,7 +63,7 @@ export const DocumentationModal: React.FC<DocumentationModalProps> = ({ isOpen, 
                         <div className="flex justify-between text-neutral-900 font-bold"><span>4</span><span>DATA_1</span></div>
                         <div className="flex justify-between text-emerald-600 font-bold"><span>5</span><span>PARITY</span></div>
                         <div className="flex justify-between text-neutral-300"><span>6</span><span>SEP</span></div>
-                        <div className="flex justify-between text-neutral-400"><span>7</span><span>CLK_B</span></div>
+                        <div className="flex justify-between text-blue-500 font-bold"><span>7</span><span>TIMELINE</span></div>
                      </div>
                 </div>
             </div>
@@ -72,9 +71,9 @@ export const DocumentationModal: React.FC<DocumentationModalProps> = ({ isOpen, 
 
           <section>
             <h3 className="text-sm font-bold text-neutral-900 uppercase border-b border-neutral-200 pb-2 mb-6">
-              02. Packet Structure
+              02. Packet Structure (V9)
             </h3>
-            <div className="overflow-hidden rounded-lg border border-neutral-200">
+             <div className="overflow-hidden rounded-lg border border-neutral-200">
                 <table className="w-full text-xs text-left bg-white">
                     <thead className="bg-neutral-50 text-neutral-500 border-b border-neutral-200 font-semibold">
                         <tr>
@@ -87,12 +86,7 @@ export const DocumentationModal: React.FC<DocumentationModalProps> = ({ isOpen, 
                         <tr>
                             <td className="py-3 px-4 font-bold text-neutral-800">FINDER_L</td>
                             <td className="py-3 px-4">3 Cols</td>
-                            <td className="py-3 px-4 text-neutral-500">Left Anchor (Solid/Empty Pattern).</td>
-                        </tr>
-                        <tr>
-                            <td className="py-3 px-4 font-bold text-neutral-800">QUIET_L</td>
-                            <td className="py-3 px-4">1 Col</td>
-                            <td className="py-3 px-4 text-neutral-500">Spacer.</td>
+                            <td className="py-3 px-4 text-neutral-500">Dynamic: Contains First/Last Chunk Markers.</td>
                         </tr>
                         <tr>
                             <td className="py-3 px-4 font-bold text-emerald-600">METADATA</td>
@@ -102,7 +96,7 @@ export const DocumentationModal: React.FC<DocumentationModalProps> = ({ isOpen, 
                         <tr>
                             <td className="py-3 px-4 font-bold text-blue-600">PAYLOAD</td>
                             <td className="py-3 px-4">Variable</td>
-                            <td className="py-3 px-4 text-neutral-500">Split-Byte Encoded Data.</td>
+                            <td className="py-3 px-4 text-neutral-500">Split-Byte + <strong className="text-blue-600">R7 Timeline</strong> Logic.</td>
                         </tr>
                         <tr>
                             <td className="py-3 px-4 font-bold text-purple-600">ECC</td>
@@ -121,24 +115,20 @@ export const DocumentationModal: React.FC<DocumentationModalProps> = ({ isOpen, 
 
           <section>
             <h3 className="text-sm font-bold text-neutral-900 uppercase border-b border-neutral-200 pb-2 mb-6">
-              03. Logic & Constraints
+              03. Absolute Position Tracking
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-neutral-600">
-                <div className="p-4 bg-white border border-neutral-200 rounded-lg shadow-sm">
-                    <strong className="text-emerald-600 block mb-1 text-sm">ECC RATIO</strong>
-                    Fixed at 0.25 (25%). For every 4 data columns, 1 parity column is generated to ensure data integrity.
+            <p className="text-xs mb-4 text-neutral-600">
+                V9 introduces a 19-column cycle on Row 7 to maintain absolute position awareness:
+            </p>
+            <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                <div className="bg-neutral-100 p-2 rounded">
+                    <strong>1-12</strong><br/>Standard Clock
                 </div>
-                <div className="p-4 bg-white border border-neutral-200 rounded-lg shadow-sm">
-                    <strong className="text-emerald-600 block mb-1 text-sm">LIQUID REFLOW</strong>
-                    Data flows naturally into available width. If the container shrinks, data splits into multiple valid packets.
+                <div className="bg-blue-50 text-blue-800 p-2 rounded border border-blue-100">
+                    <strong>13-15</strong><br/>SYNC Burst
                 </div>
-                <div className="p-4 bg-white border border-neutral-200 rounded-lg shadow-sm">
-                    <strong className="text-emerald-600 block mb-1 text-sm">SPLIT-BYTE</strong>
-                    ASCII characters are split into two 4-bit nibbles (High/Low) to fit the 4-bit central data channel.
-                </div>
-                <div className="p-4 bg-white border border-neutral-200 rounded-lg shadow-sm">
-                    <strong className="text-emerald-600 block mb-1 text-sm">RIGHT FINDER LOGIC</strong>
-                    The Right Finder encodes row parity (Even/Odd) and End-Of-File (EOF) status directly in the anchor pattern.
+                <div className="bg-blue-50 text-blue-800 p-2 rounded border border-blue-100">
+                    <strong>16-19</strong><br/>POS Index (4-bit)
                 </div>
             </div>
           </section>

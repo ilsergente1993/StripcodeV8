@@ -1,5 +1,5 @@
 {
-  "name": "stripcode-v8-generator",
+  "name": "stripcode-v9-generator",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -10,9 +10,10 @@
   },
   "dependencies": {
     "react": "^19.2.3",
+    "react-dom": "^19.2.3",
     "vite": "^7.3.1",
     "@vitejs/plugin-react": "^5.1.2",
-    "react-dom": "^19.2.3"
+    "qrcode": "1.5.3"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

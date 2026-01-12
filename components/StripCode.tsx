@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
-import { generateStripcodeV8, StripChunk, ROWS } from '../engine';
+import { generateStripcodeV9, StripChunk, ROWS } from '../engine';
 
 // --- Constants matches engine.ts ---
 const OVERHEAD_COLS = 11;
@@ -24,7 +24,7 @@ interface TooltipData {
   packetIdx: number;
   col: number;
   row: number;
-  type: string;
+  zone: string;
   bitValue: number;
 }
 
@@ -36,26 +36,22 @@ interface ChunkCanvasProps {
   onHover: (data: Omit<TooltipData, 'x' | 'y' | 'visible'> | null, e: React.MouseEvent) => void;
 }
 
-// --- HELPER: Granular Column Type Logic ---
-const getDetailedColType = (col: number, chunk: StripChunk): string => {
+// --- HELPER: Column Type Logic ---
+const getColType = (col: number, chunk: StripChunk): string => {
   const totalCols = chunk.length;
   
   if (col < 3) return 'FINDER_L';
   if (col === 3) return 'QUIET_L';
-  if (col === 4 || col === 5) return 'META_IDX'; // Chunk Index
-  if (col === 6 || col === 7) return 'META_TOT'; // Total Chunks
+  if (col === 4 || col === 5) return 'META_IDX'; 
+  if (col === 6 || col === 7) return 'META_TOT'; 
 
-  const endStart = totalCols - 3; // Start of Right Quiet
-  const rfStart = totalCols - 2;  // Start of Right Finder
+  const endStart = totalCols - 3; 
+  const rfStart = totalCols - 2;  
 
   if (col === endStart) return 'QUIET_R';
   
   if (col >= rfStart) {
-    // Determine RF State by looking at bits 3 and 4 of the first RF col (rfStart)
     const rfCol = chunk[rfStart];
-    // R3=1, R4=1 -> EOF
-    // R3=1, R4=0 -> Even
-    // R3=0, R4=1 -> Odd
     if (rfCol[3] && rfCol[4]) return 'RF_END';
     if (rfCol[3] && !rfCol[4]) return 'RF_EVEN';
     return 'RF_ODD';
@@ -67,37 +63,115 @@ const getDetailedColType = (col: number, chunk: StripChunk): string => {
   while ((N + Math.ceil(N * ECC_RATIO)) > R) N--;
   while ((N + 1 + Math.ceil((N + 1) * ECC_RATIO)) <= R) N++;
   
-  // 8 is start of payload (LF=3, QL=1, META=4) -> 3+1+4 = 8
   if (col < 8 + N) return 'PAYLOAD';
   return 'ECC_BLK';
 };
 
-// --- VISUALIZATION PALETTE ---
-// hoverFill is a more opaque version of the stroke color for the active highlight
-const ZONE_STYLES: Record<string, { stroke: string, fill: string, hoverFill: string }> = {
-    FINDER_L: { stroke: '#525252', fill: 'transparent', hoverFill: 'rgba(82, 82, 82, 0.2)' },
-    QUIET_L:  { stroke: '#e5e5e5', fill: 'rgba(255,255,255,0.2)', hoverFill: 'rgba(229, 229, 229, 0.3)' },
-    META_IDX: { stroke: '#10b981', fill: 'rgba(16, 185, 129, 0.05)', hoverFill: 'rgba(16, 185, 129, 0.3)' }, // Emerald
-    META_TOT: { stroke: '#0d9488', fill: 'rgba(13, 148, 136, 0.05)', hoverFill: 'rgba(13, 148, 136, 0.3)' }, // Teal
-    PAYLOAD:  { stroke: '#3b82f6', fill: 'rgba(59, 130, 246, 0.05)', hoverFill: 'rgba(59, 130, 246, 0.3)' }, // Blue
-    ECC_BLK:  { stroke: '#a855f7', fill: 'rgba(168, 85, 247, 0.05)', hoverFill: 'rgba(168, 85, 247, 0.3)' }, // Purple
-    QUIET_R:  { stroke: '#e5e5e5', fill: 'rgba(255,255,255,0.2)', hoverFill: 'rgba(229, 229, 229, 0.3)' },
-    RF_EVEN:  { stroke: '#f97316', fill: 'rgba(249, 115, 22, 0.05)', hoverFill: 'rgba(249, 115, 22, 0.3)' }, // Orange
-    RF_ODD:   { stroke: '#ec4899', fill: 'rgba(236, 72, 153, 0.05)', hoverFill: 'rgba(236, 72, 153, 0.3)' }, // Pink
-    RF_END:   { stroke: '#ef4444', fill: 'rgba(239, 68, 68, 0.05)', hoverFill: 'rgba(239, 68, 68, 0.3)' }, // Red
+// --- HELPER: Geometry & Zone ID ---
+// Rules:
+// 1. Finders & Quiet Zones are Full Height (R0-R7).
+// 2. Global Tracks (Clock R0, Parity R5, Sep R6, Time R7) exist only in Data columns.
+// 3. Core Data is R1-R4 in Data columns.
+const getZoneLayout = (col: number, row: number, chunk: StripChunk): { id: string, x: number, y: number, w: number, h: number } | null => {
+    const totalCols = chunk.length;
+
+    // 1. VERTICAL ZONES (Priority: Full Height R0-R7)
+    
+    // Left Finder (Cols 0-2)
+    if (col < 3) {
+        return { id: 'FINDER_L', x: 0, y: 0, w: 3, h: 8 };
+    }
+    // Left Quiet (Col 3)
+    if (col === 3) {
+        return { id: 'QUIET_L', x: 3, y: 0, w: 1, h: 8 };
+    }
+    // Right Quiet (Col Total-3)
+    if (col === totalCols - 3) {
+        return { id: 'QUIET_R', x: totalCols - 3, y: 0, w: 1, h: 8 };
+    }
+    // Right Finder (Cols Total-2 to Total)
+    if (col >= totalCols - 2) {
+        // ID depends on specific RF type bits
+        const rfType = getColType(col, chunk);
+        return { id: `CORE_${rfType}`, x: totalCols - 2, y: 0, w: 2, h: 8 };
+    }
+
+    // 2. HORIZONTAL ZONES (Restricted to Data Area: Cols 4 to L-4)
+    // Now we are strictly inside the data area.
+    
+    // R0: Clock A (Behaves like Timeline now, strictly horizontal in data area)
+    if (row === 0) return { id: 'ROW_CLOCK', x: 4, y: 0, w: totalCols - 7, h: 1 };
+    
+    // R5: Parity
+    if (row === 5) return { id: 'ROW_PARITY', x: 4, y: 5, w: totalCols - 7, h: 1 };
+    
+    // R6: Separator
+    if (row === 6) return { id: 'ROW_SEPARATOR', x: 4, y: 6, w: totalCols - 7, h: 1 };
+    
+    // R7: Timeline
+    if (row === 7) return { id: 'ROW_TIMELINE', x: 4, y: 7, w: totalCols - 7, h: 1 };
+
+    // 3. CORE DATA BLOCKS (R1-R4)
+    // We need to find start/end of current block type within the data area
+    const cType = getColType(col, chunk);
+    
+    // Scan backwards from current col to find start
+    let start = col;
+    while (start > 4 && getColType(start - 1, chunk) === cType) start--;
+    
+    // Scan forwards to find end
+    let end = col;
+    while (end < totalCols - 4 && getColType(end + 1, chunk) === cType) end++;
+    
+    return { id: `CORE_${cType}`, x: start, y: 1, w: end - start + 1, h: 4 };
 };
 
-const ROW_HIGHLIGHTS = {
-    CLOCK:  { fill: 'rgba(220, 38, 38, 0.15)', stroke: '#dc2626' }, // Red
-    PARITY: { fill: 'rgba(245, 158, 11, 0.15)', stroke: '#d97706' }, // Amber
+// --- VISUALIZATION PALETTE ---
+const AREA_STYLES: Record<string, { fill: string, stroke: string, label: string }> = {
+    // Global Rows
+    ROW_CLOCK:     { fill: 'rgba(239, 68, 68, 0.3)', stroke: '#dc2626', label: 'CLOCK A' }, 
+    ROW_PARITY:    { fill: 'rgba(245, 158, 11, 0.3)', stroke: '#d97706', label: 'PARITY' }, 
+    ROW_SEPARATOR: { fill: 'rgba(115, 115, 115, 0.3)', stroke: '#737373', label: 'SEPARATOR' }, 
+    ROW_TIMELINE:  { fill: 'rgba(59, 130, 246, 0.3)', stroke: '#2563eb', label: 'TIMELINE' }, 
+
+    // Finders (Full Height R0-R7)
+    FINDER_L:      { fill: 'rgba(23, 23, 23, 0.15)', stroke: '#404040', label: 'FINDER L' },
+    CORE_RF_EVEN:  { fill: 'rgba(249, 115, 22, 0.2)', stroke: '#ea580c', label: 'RF: EVEN' },
+    CORE_RF_ODD:   { fill: 'rgba(236, 72, 153, 0.2)', stroke: '#db2777', label: 'RF: ODD' },
+    CORE_RF_END:   { fill: 'rgba(239, 68, 68, 0.2)', stroke: '#dc2626', label: 'RF: END' },
+
+    // Quiet (Full Height)
+    QUIET_L:       { fill: 'rgba(255, 255, 255, 0.1)', stroke: '#e5e5e5', label: 'QUIET' },
+    QUIET_R:       { fill: 'rgba(255, 255, 255, 0.1)', stroke: '#e5e5e5', label: 'QUIET' },
+
+    // Core Data (R1-R4)
+    CORE_META_IDX: { fill: 'rgba(16, 185, 129, 0.2)', stroke: '#059669', label: 'META: IDX' }, 
+    CORE_META_TOT: { fill: 'rgba(13, 148, 136, 0.2)', stroke: '#0d9488', label: 'META: TOT' }, 
+    CORE_PAYLOAD:  { fill: 'rgba(59, 130, 246, 0.2)', stroke: '#3b82f6', label: 'PAYLOAD' },   
+    CORE_ECC_BLK:  { fill: 'rgba(168, 85, 247, 0.2)', stroke: '#9333ea', label: 'ECC' },   
 };
 
 const ChunkCanvas: React.FC<ChunkCanvasProps> = ({ chunk, height, debugMode, packetIndex, onHover }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [localHoverCol, setLocalHoverCol] = useState<number | null>(null);
+  const [hoverZoneId, setHoverZoneId] = useState<string | null>(null);
   
   const cellSize = height / ROWS;
   const width = chunk.length * cellSize;
+
+  // Pre-calculate unique zones
+  const uniqueZones = useMemo(() => {
+      const zones = new Map<string, { id: string, x: number, y: number, w: number, h: number }>();
+      for (let c = 0; c < chunk.length; c++) {
+          for (let r = 0; r < ROWS; r++) {
+              const z = getZoneLayout(c, r, chunk);
+              if (z) {
+                const key = `${z.id}_${z.x}_${z.y}`;
+                if (!zones.has(key)) zones.set(key, z);
+              }
+          }
+      }
+      return Array.from(zones.values());
+  }, [chunk]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -108,7 +182,7 @@ const ChunkCanvas: React.FC<ChunkCanvasProps> = ({ chunk, height, debugMode, pac
     // Reset
     ctx.clearRect(0, 0, width, height);
     
-    // --- 1. Draw Bits (Standard Layer) ---
+    // --- 1. Draw Bits ---
     ctx.fillStyle = '#171717'; 
     chunk.forEach((col, x) => {
         col.forEach((bit, y) => {
@@ -116,93 +190,46 @@ const ChunkCanvas: React.FC<ChunkCanvasProps> = ({ chunk, height, debugMode, pac
         });
     });
 
-    // --- 2. Debug Overlays (Zones & Rows) ---
     if (debugMode) {
-        
-        // A. Draw Horizontal Row Highlights (Clock & Parity)
-        // Row 0: Clock A
-        ctx.fillStyle = ROW_HIGHLIGHTS.CLOCK.fill;
-        ctx.fillRect(0, 0, width, cellSize);
-        ctx.strokeStyle = ROW_HIGHLIGHTS.CLOCK.stroke;
+        // --- 2. Draw Zones (Fills + Borders) ---
+        // We draw persistent fills for all zones to show structure
         ctx.lineWidth = 1;
-        ctx.strokeRect(0, 0, width, cellSize);
-
-        // Row 7: Clock B
-        ctx.fillStyle = ROW_HIGHLIGHTS.CLOCK.fill;
-        ctx.fillRect(0, 7 * cellSize, width, cellSize);
-        ctx.strokeRect(0, 7 * cellSize, width, cellSize);
-
-        // Row 5: Parity
-        ctx.fillStyle = ROW_HIGHLIGHTS.PARITY.fill;
-        ctx.fillRect(0, 5 * cellSize, width, cellSize);
-        ctx.strokeStyle = ROW_HIGHLIGHTS.PARITY.stroke;
-        ctx.strokeRect(0, 5 * cellSize, width, cellSize);
-
-        // B. Calculate Zones
-        const zones: { type: string, start: number, length: number }[] = [];
-        if (chunk.length > 0) {
-            let currentType = getDetailedColType(0, chunk);
-            let startIndex = 0;
-            
-            for (let i = 1; i < chunk.length; i++) {
-                const type = getDetailedColType(i, chunk);
-                if (type !== currentType) {
-                    zones.push({ type: currentType, start: startIndex, length: i - startIndex });
-                    currentType = type;
-                    startIndex = i;
-                }
-            }
-            zones.push({ type: currentType, start: startIndex, length: chunk.length - startIndex });
-        }
-
-        // C. Draw Zones
-        const activeZone = localHoverCol !== null 
-            ? zones.find(z => localHoverCol >= z.start && localHoverCol < (z.start + z.length)) 
-            : null;
-
-        zones.forEach(zone => {
-            const isActive = activeZone === zone;
-            // Skip active zone in first pass
-            if (isActive) return;
-
-            const style = ZONE_STYLES[zone.type];
-            if (!style) return;
-
-            const x = zone.start * cellSize;
-            const w = zone.length * cellSize;
-            const h = height;
-
-            if (style.fill !== 'transparent') {
+        uniqueZones.forEach(z => {
+            const style = AREA_STYLES[z.id];
+            if (style) {
+                // Persistent Background
                 ctx.fillStyle = style.fill;
-                ctx.fillRect(x, 0, w, h);
+                ctx.fillRect(z.x * cellSize, z.y * cellSize, z.w * cellSize, z.h * cellSize);
+                
+                // Persistent Border
+                ctx.strokeStyle = style.stroke;
+                ctx.globalAlpha = 0.4; 
+                ctx.strokeRect(z.x * cellSize, z.y * cellSize, z.w * cellSize, z.h * cellSize);
+                ctx.globalAlpha = 1.0;
             }
-            ctx.strokeStyle = style.stroke;
-            ctx.lineWidth = 2;
-            ctx.strokeRect(x + 1, 1, w - 2, h - 2); 
         });
 
-        // D. Draw Active Zone (Highlight)
-        if (activeZone) {
-            const style = ZONE_STYLES[activeZone.type];
-            if (style) {
-                const x = activeZone.start * cellSize;
-                const w = activeZone.length * cellSize;
-                const h = height;
-                const expansion = 4; 
-                
-                // Active Background
-                ctx.fillStyle = style.hoverFill;
-                ctx.fillRect(x - expansion/2, 0, w + expansion, h);
-
-                // Active Border
+        // --- 3. Draw Active Zone Highlight (Stronger) ---
+        if (hoverZoneId) {
+            const activeRects = uniqueZones.filter(z => z.id === hoverZoneId);
+            const style = AREA_STYLES[hoverZoneId];
+            
+            if (style && activeRects.length > 0) {
+                // Slightly darker fill for hover
+                // We use a trick: draw the fill again to darken the alpha blend
+                ctx.fillStyle = style.fill; 
                 ctx.strokeStyle = style.stroke;
-                ctx.lineWidth = 3;
-                ctx.strokeRect(x - 2, 0, w + 4, h);
+                ctx.lineWidth = 2;
+
+                activeRects.forEach(z => {
+                    ctx.fillRect(z.x * cellSize, z.y * cellSize, z.w * cellSize, z.h * cellSize);
+                    ctx.strokeRect(z.x * cellSize, z.y * cellSize, z.w * cellSize, z.h * cellSize);
+                });
             }
         }
     }
 
-  }, [chunk, height, cellSize, width, debugMode, localHoverCol]);
+  }, [chunk, height, cellSize, width, debugMode, hoverZoneId, uniqueZones]);
 
   const handleMouseMove = (e: React.MouseEvent) => {
     const canvas = canvasRef.current;
@@ -215,25 +242,32 @@ const ChunkCanvas: React.FC<ChunkCanvasProps> = ({ chunk, height, debugMode, pac
     const colIdx = Math.floor(x / cellSize);
     const rowIdx = Math.floor(y / cellSize);
 
-    // Update Local Hover State
     if (colIdx >= 0 && colIdx < chunk.length && rowIdx >= 0 && rowIdx < ROWS) {
-        setLocalHoverCol(colIdx);
-    } else {
-        setLocalHoverCol(null);
-    }
+        const layout = getZoneLayout(colIdx, rowIdx, chunk);
+        const zoneId = layout ? layout.id : null;
+        setHoverZoneId(zoneId);
 
-    // Bubble up to tooltip
-    if (colIdx >= 0 && colIdx < chunk.length && rowIdx >= 0 && rowIdx < ROWS) {
-      const type = getDetailedColType(colIdx, chunk);
-      const bitValue = chunk[colIdx][rowIdx] ? 1 : 0;
-      onHover({ packetIdx: packetIndex, col: colIdx, row: rowIdx, type, bitValue }, e);
+        if (zoneId) {
+            const style = AREA_STYLES[zoneId];
+            const zoneLabel = style ? style.label : zoneId;
+            const bitValue = chunk[colIdx][rowIdx] ? 1 : 0;
+
+            onHover({ 
+                packetIdx: packetIndex, 
+                col: colIdx, 
+                row: rowIdx, 
+                zone: zoneLabel, 
+                bitValue 
+            }, e);
+        }
     } else {
-      onHover(null, e);
+        setHoverZoneId(null);
+        onHover(null, e);
     }
   };
 
   const handleMouseLeave = (e: React.MouseEvent) => {
-    setLocalHoverCol(null);
+    setHoverZoneId(null);
     onHover(null, e);
   };
 
@@ -259,18 +293,9 @@ const ChunkCanvas: React.FC<ChunkCanvasProps> = ({ chunk, height, debugMode, pac
 const Tooltip: React.FC<{ data: TooltipData }> = ({ data }) => {
   if (!data.visible) return null;
 
-  const getBadgeColor = (type: string) => {
-    switch (type) {
-      case 'PAYLOAD': return 'text-blue-400 border-blue-900/50 bg-blue-900/20';
-      case 'ECC_BLK': return 'text-purple-400 border-purple-900/50 bg-purple-900/20';
-      case 'META_IDX': return 'text-emerald-400 border-emerald-900/50 bg-emerald-900/20';
-      case 'META_TOT': return 'text-teal-400 border-teal-900/50 bg-teal-900/20';
-      case 'RF_END': return 'text-red-400 border-red-900/50 bg-red-900/20';
-      case 'RF_EVEN': return 'text-orange-400 border-orange-900/50 bg-orange-900/20';
-      case 'RF_ODD': return 'text-pink-400 border-pink-900/50 bg-pink-900/20';
-      default: return 'text-neutral-400 border-neutral-700 bg-neutral-800';
-    }
-  };
+  const isRowZone = data.zone.startsWith('CLOCK') || data.zone === 'PARITY' || data.zone === 'SEPARATOR' || data.zone === 'TIMELINE';
+  const isQuiet = data.zone === 'QUIET';
+  const isFinder = data.zone.includes('FINDER') || data.zone.includes('RF');
 
   return (
     <div 
@@ -282,12 +307,35 @@ const Tooltip: React.FC<{ data: TooltipData }> = ({ data }) => {
     >
       <div className="flex justify-between items-center mb-2 border-b border-neutral-700 pb-1">
         <span className="text-neutral-400 font-bold">PACKET_{data.packetIdx.toString(16).toUpperCase().padStart(2, '0')}</span>
-        <span className={`px-1.5 py-0.5 rounded border text-[10px] ${getBadgeColor(data.type)}`}>{data.type}</span>
+        <span className={`px-2 py-0.5 rounded font-bold text-[10px] bg-neutral-800 border border-neutral-600 text-white`}>
+            {data.zone}
+        </span>
       </div>
       
       <div className="grid grid-cols-2 gap-y-1 text-neutral-300">
         <span className="text-neutral-500">POS:</span> <span>R{data.row} : C{data.col}</span>
         <span className="text-neutral-500">VAL:</span> <span className={data.bitValue ? 'text-white font-bold' : 'text-neutral-600'}>{data.bitValue}</span>
+        
+        {isRowZone && (
+             <div className="col-span-2 mt-1 pt-1 border-t border-neutral-800 text-[10px] text-neutral-500 italic">
+                Global Track (Data Only)
+             </div>
+        )}
+        {isQuiet && (
+             <div className="col-span-2 mt-1 pt-1 border-t border-neutral-800 text-[10px] text-neutral-500 italic">
+                Buffer Zone (Empty)
+             </div>
+        )}
+        {isFinder && (
+             <div className="col-span-2 mt-1 pt-1 border-t border-neutral-800 text-[10px] text-neutral-500 italic">
+                Anchor Pattern (Full Height)
+             </div>
+        )}
+        {!isRowZone && !isQuiet && !isFinder && (
+            <div className="col-span-2 mt-1 pt-1 border-t border-neutral-800 text-[10px] text-neutral-500 italic">
+                Data Core (Nibbles 1-4)
+             </div>
+        )}
       </div>
     </div>
   );
@@ -306,7 +354,7 @@ const StripCode: React.FC<StripCodeProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState<number>(0);
-  const [tooltip, setTooltip] = useState<TooltipData>({ visible: false, x: 0, y: 0, packetIdx: 0, col: 0, row: 0, type: '', bitValue: 0 });
+  const [tooltip, setTooltip] = useState<TooltipData>({ visible: false, x: 0, y: 0, packetIdx: 0, col: 0, row: 0, zone: '', bitValue: 0 });
   const [isContainerHovered, setIsContainerHovered] = useState(false);
 
   useEffect(() => {
@@ -324,7 +372,7 @@ const StripCode: React.FC<StripCodeProps> = ({
     const effectiveWidth = disableReflow ? 50000 : containerWidth;
     if (effectiveWidth === 0 && !disableReflow) return [];
     const w = Math.max(effectiveWidth - 4, 100); 
-    return generateStripcodeV8(text, w, height);
+    return generateStripcodeV9(text, w, height);
   }, [text, containerWidth, height, disableReflow]);
 
   const handleChunkHover = (data: Omit<TooltipData, 'x' | 'y' | 'visible'> | null, e: React.MouseEvent) => {
@@ -343,9 +391,6 @@ const StripCode: React.FC<StripCodeProps> = ({
   const gapClass = verticalGap !== undefined ? '' : 'gap-y-6';
   const customStyle = verticalGap !== undefined ? { rowGap: `${verticalGap}px` } : {};
   const containerOverflowClass = disableReflow ? 'overflow-x-auto whitespace-nowrap' : 'flex-wrap';
-
-  // Determine outer container layout
-  // If disableReflow is true (inline mode), we use inline-block and w-auto
   const outerLayoutClass = disableReflow ? 'inline-block w-auto' : 'w-full';
 
   return (
@@ -382,7 +427,7 @@ const StripCode: React.FC<StripCodeProps> = ({
                     chunk={chunk} 
                     height={height} 
                     debugMode={debugMode} 
-                    packetIndex={index}
+                    packetIndex={index} 
                     onHover={handleChunkHover}
                 />
                 {showLabels && (

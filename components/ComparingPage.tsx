@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import StripCode from './StripCode';
-import { generateStripcodeV8, ROWS } from '../engine';
+import { generateStripcodeV9, ROWS } from '../engine';
+import QRCode from 'qrcode';
 
 // --- VISUAL GENERATOR: BARCODE 128 (Authentic Look) ---
 const Barcode128: React.FC<{ text: string, scale?: number }> = ({ text, scale = 2 }) => {
+    // Visual approximation of Code 128B
     const generatePattern = (str: string) => {
         const patterns: number[] = [];
         patterns.push(2,1,1,2,1,4); // Start B
@@ -22,17 +24,17 @@ const Barcode128: React.FC<{ text: string, scale?: number }> = ({ text, scale = 
     };
 
     const widths = useMemo(() => generatePattern(text), [text]);
+    const totalUnits = widths.reduce((a, b) => a + b, 0);
 
     return (
-        <div className="flex flex-col items-center max-w-full">
+        <div className="flex flex-col items-center">
             <div 
-                className="flex items-stretch bg-white px-2 overflow-x-auto max-w-full no-scrollbar" 
-                style={{ height: '64px', minWidth: '150px' }}
+                className="flex items-stretch bg-white px-2 overflow-hidden" 
+                style={{ height: '64px', minWidth: `${totalUnits * scale}px` }}
             >
                 {widths.map((w, i) => (
                     <div 
                         key={i} 
-                        className="shrink-0"
                         style={{ 
                             width: `${w * scale}px`, 
                             backgroundColor: i % 2 === 0 ? 'black' : 'white' 
@@ -40,132 +42,27 @@ const Barcode128: React.FC<{ text: string, scale?: number }> = ({ text, scale = 
                     />
                 ))}
             </div>
-            <div className="font-mono text-[10px] sm:text-xs mt-1 tracking-[0.2em] sm:tracking-[0.3em] truncate max-w-full">{text}</div>
+            <div className="font-mono text-xs mt-1 tracking-[0.3em]">{text}</div>
         </div>
     );
 };
 
-// --- ISO/IEC 18004:2024 COMPLIANT QR GENERATOR ---
-const AuthenticQRCode: React.FC<{ text: string, moduleSize?: number }> = ({ text, moduleSize = 4 }) => {
-    const [matrix, setMatrix] = useState<boolean[][]>([]);
-    const [size, setSize] = useState(21);
+// --- REAL GENERATOR: QR CODE (ISO/IEC 18004) ---
+const AuthenticQRCode: React.FC<{ matrix: boolean[][], size: number, moduleSize?: number, error?: boolean }> = ({ matrix, size, moduleSize = 4, error }) => {
+    
+    if (error) {
+        return (
+            <div className="bg-red-50 p-6 border border-red-200 rounded text-center">
+                <span className="text-xs font-bold text-red-500 block">CAPACITY EXCEEDED</span>
+                <span className="text-[10px] text-red-400">Text too long for QR standard</span>
+            </div>
+        );
+    }
 
-    useEffect(() => {
-        // 1. Determine Version (Standard sizes 21x21 to 177x177)
-        // Simplified mapping for the demo: Version 1 to 10
-        const version = Math.max(1, Math.min(10, Math.ceil((text.length * 8 + 20) / 100) + 1));
-        const dim = 21 + (version - 1) * 4;
-        setSize(dim);
-
-        const grid = Array(dim).fill(null).map(() => Array(dim).fill(false));
-        const reserved = Array(dim).fill(null).map(() => Array(dim).fill(false));
-
-        // 2. Reserved Function Patterns
-        const markReserved = (r: number, c: number, val: boolean) => {
-            if (r >= 0 && r < dim && c >= 0 && c < dim) {
-                grid[r][c] = val;
-                reserved[r][c] = true;
-            }
-        };
-
-        // Finder Patterns
-        const drawFinder = (ox: number, oy: number) => {
-            for(let y=0; y<7; y++) {
-                for(let x=0; x<7; x++) {
-                    const isBorder = y===0 || y===6 || x===0 || x===6;
-                    const isInner = y>=2 && y<=4 && x>=2 && x<=4;
-                    markReserved(oy+y, ox+x, isBorder || isInner);
-                }
-            }
-            // Quiet zones around finders (simplified as strictly reserved)
-            for(let i=-1; i<8; i++) {
-                for(let j=-1; j<8; j++) {
-                    const r = oy+i, c = ox+j;
-                    if(r>=0 && r<dim && c>=0 && c<dim && !reserved[r][c]) {
-                        reserved[r][c] = true; 
-                        grid[r][c] = false;
-                    }
-                }
-            }
-        };
-        drawFinder(0, 0);       
-        drawFinder(dim-7, 0);   
-        drawFinder(0, dim-7);
-
-        // Timing Patterns
-        for(let i=8; i<dim-8; i++) {
-            markReserved(6, i, i % 2 === 0);
-            markReserved(i, 6, i % 2 === 0);
-        }
-
-        // Alignment Patterns (Standard for V2+)
-        if (version >= 2) {
-            const pos = dim - 7; 
-            for(let y=-2; y<=2; y++) {
-                for(let x=-2; x<=2; x++) {
-                    const isEdge = Math.abs(x) === 2 || Math.abs(y) === 2;
-                    const isCenter = x === 0 && y === 0;
-                    markReserved(pos+y, pos+x, isEdge || isCenter);
-                }
-            }
-        }
-
-        // 3. Data Encoding (ISO/IEC 18004 Byte Mode)
-        let bits: number[] = [];
-        // Mode Indicator: Byte (0100)
-        bits.push(0, 1, 0, 0);
-        // Character Count Indicator (8 bits for Version 1-9)
-        const count = Math.min(text.length, 255);
-        for(let i=7; i>=0; i--) bits.push((count >> i) & 1);
-        // Data bits
-        for(let i=0; i<text.length; i++) {
-            const charCode = text.charCodeAt(i);
-            for(let b=7; b>=0; b--) bits.push((charCode >> b) & 1);
-        }
-        // Terminator (0000)
-        for(let i=0; i<4; i++) bits.push(0);
-        
-        // Padding bytes (11101100, 00010001)
-        const totalCapBits = ((dim * dim) - 200); // Rough approximation of total data capacity
-        const padBytes = [0xEC, 0x11];
-        let pIdx = 0;
-        while(bits.length < totalCapBits) {
-            const pad = padBytes[pIdx % 2];
-            for(let b=7; b>=0; b--) bits.push((pad >> b) & 1);
-            pIdx++;
-        }
-
-        // 4. Data Placement (Zig-Zag)
-        let bitIdx = 0;
-        let direction = -1; // -1 for Up, 1 for Down
-        let r = dim - 1;
-        let c = dim - 1;
-
-        while (c >= 0) {
-            if (c === 6) c--; // Skip timing column
-            for (let i = 0; i < 2; i++) {
-                const curC = c - i;
-                if (!reserved[r][curC]) {
-                    const dataBit = bits[bitIdx % bits.length];
-                    // Apply Mask 0: (row + col) % 2 == 0
-                    const mask = (r + curC) % 2 === 0;
-                    grid[r][curC] = dataBit === 1 ? !mask : mask;
-                    bitIdx++;
-                }
-            }
-            r += direction;
-            if (r < 0 || r >= dim) {
-                r = r < 0 ? 0 : dim - 1;
-                direction *= -1;
-                c -= 2;
-            }
-        }
-
-        setMatrix(grid);
-    }, [text]);
+    if (size === 0) return null;
 
     return (
-        <div className="bg-white p-2 inline-block shadow-sm rounded-sm">
+        <div className="bg-white p-2 inline-block shadow-sm">
             <div 
                 style={{ 
                     display: 'grid', 
@@ -190,24 +87,54 @@ const AuthenticQRCode: React.FC<{ text: string, moduleSize?: number }> = ({ text
 };
 
 export const ComparingPage: React.FC = () => {
-  const [text, setText] = useState("V8_COMPARISON");
+  const [text, setText] = useState("V9_PROTOCOL_COMPARISON");
   const [containerWidth, setContainerWidth] = useState(600);
-  const [isLiquid, setIsLiquid] = useState(true);
+  const [isLiquid, setIsLiquid] = useState(true); // Toggle State
   const stripContainerRef = useRef<HTMLDivElement>(null);
 
+  // --- QR GENERATION (ISO/IEC 18004) ---
+  const qrData = useMemo(() => {
+    try {
+        if (!text) return { valid: true, size: 0, matrix: [] };
+        
+        // Generate QR using library (Error Correction Level M is standard for comparisons)
+        // @ts-ignore - QRCode types might be missing in this env
+        const qr = QRCode.create(text, { errorCorrectionLevel: 'M' });
+        const size = qr.modules.size;
+        const data = qr.modules.data;
+        
+        // Convert flat Uint8Array to 2D Boolean Matrix
+        const grid: boolean[][] = [];
+        for (let y = 0; y < size; y++) {
+            const row: boolean[] = [];
+            for (let x = 0; x < size; x++) {
+                row.push(data[y * size + x] !== 0);
+            }
+            grid.push(row);
+        }
+        
+        return { valid: true, size, matrix: grid };
+    } catch (e) {
+        console.warn("QR Gen Error:", e);
+        return { valid: false, size: 0, matrix: [] };
+    }
+  }, [text]);
+
+  // --- STATS CALCULATION ---
   const stats = useMemo(() => {
+    // For calculation purposes, if liquid is off, we calculate assuming a single long line (infinite width)
     const calcWidth = isLiquid && stripContainerRef.current ? stripContainerRef.current.offsetWidth : 10000;
     const stripHeight = 32;
-    const chunks = generateStripcodeV8(text, calcWidth, stripHeight);
+    const chunks = generateStripcodeV9(text, calcWidth, stripHeight);
     
     const stripPixelArea = chunks.reduce((acc, chunk) => acc + (chunk.length * (stripHeight/ROWS) * stripHeight), 0);
     const stripDims = `${chunks.length > 0 ? chunks.reduce((a,c)=>a+(c.length*(stripHeight/ROWS)),0) : 0} x ${stripHeight}`;
 
-    const qrVersion = Math.max(1, Math.min(10, Math.ceil((text.length * 8 + 20) / 100) + 1));
-    const qrDim = 21 + (qrVersion - 1) * 4;
+    // QR Stats (Real Data)
     const qrModuleSize = 4;
+    const qrDim = qrData.valid ? qrData.size : 0;
     const qrPixelArea = (qrDim * qrModuleSize) * (qrDim * qrModuleSize);
-    const qrDims = `${qrDim * qrModuleSize} x ${qrDim * qrModuleSize}`;
+    const qrDims = qrData.valid ? `${qrDim * qrModuleSize} x ${qrDim * qrModuleSize}` : "N/A";
 
     const barcodeWidth = (text.length * 11 + 30) * 2; 
     const barcodeHeight = 64;
@@ -219,7 +146,7 @@ export const ComparingPage: React.FC = () => {
         qr: { area: qrPixelArea, dims: qrDims },
         barcode: { area: barcodePixelArea, dims: barcodeDims }
     };
-  }, [text, containerWidth, isLiquid]);
+  }, [text, containerWidth, isLiquid, qrData]);
 
   useEffect(() => {
     if (!stripContainerRef.current) return;
@@ -234,54 +161,55 @@ export const ComparingPage: React.FC = () => {
 
   return (
     <div className="h-full overflow-y-auto bg-neutral-100 pb-20">
-        <div className="max-w-7xl mx-auto py-8 sm:py-12 px-4 sm:px-6">
+        <div className="max-w-7xl mx-auto py-12 px-6">
             
-            <div className="text-center mb-8 sm:mb-12">
-                <h2 className="text-2xl sm:text-3xl font-bold text-neutral-900 mb-2 sm:mb-4">Technology Comparison</h2>
-                <p className="text-neutral-500 text-sm sm:text-base max-w-2xl mx-auto">
-                    Analyzing Stripcode V8 against traditional storage formats using ISO/IEC 18004:2024 structural logic for QR generation.
+            <div className="text-center mb-12">
+                <h2 className="text-3xl font-bold text-neutral-900 mb-4">Technology Comparison</h2>
+                <p className="text-neutral-500 max-w-2xl mx-auto">
+                    Analyzing the efficiency, density, and spatial requirements of Stripcode V9 against traditional optical storage formats.
                 </p>
             </div>
 
             {/* Interactive Control */}
-            <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-neutral-200 mb-8 sm:mb-12 sticky top-2 sm:top-4 z-20">
-                 <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-2 block">Test Data Input</label>
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-neutral-200 mb-12 sticky top-4 z-20">
+                 <label className="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2 block">Test Data Input</label>
                  <input 
                     type="text" 
                     value={text} 
                     onChange={(e) => setText(e.target.value)}
-                    className="w-full bg-neutral-50 border border-neutral-200 rounded px-3 py-2 font-mono text-sm focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
+                    className="w-full bg-neutral-50 border border-neutral-200 rounded px-4 py-2 font-mono text-sm focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
                     placeholder="Type to compare..."
                  />
-                 <div className="mt-2 flex justify-between text-[10px] text-neutral-400">
-                    <span>{text.length} chars</span>
-                    <span>{text.length * 8} bits</span>
+                 <div className="mt-2 flex justify-between text-xs text-neutral-400">
+                    <span>Length: {text.length} chars</span>
+                    <span>Raw Data: {text.length * 8} bits</span>
                  </div>
             </div>
 
             {/* Visual Comparison Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8 mb-12 sm:mb-16 items-start">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-16 items-start">
                 
-                {/* 1. STRIPCODE V8 */}
-                <div className="bg-white rounded-xl border-2 border-emerald-500/20 shadow-lg overflow-hidden flex flex-col relative">
-                    <div className="bg-emerald-50 p-3 sm:p-4 border-b border-emerald-100 flex justify-between items-center">
+                {/* 1. STRIPCODE V9 */}
+                <div className="bg-white rounded-xl border-2 border-emerald-500/20 shadow-lg overflow-hidden flex flex-col relative h-full">
+                    <div className="bg-emerald-50 p-4 border-b border-emerald-100 flex justify-between items-center">
                         <div className="flex flex-col">
-                            <h3 className="text-sm sm:text-base font-bold text-emerald-900">Stripcode V8</h3>
-                            <span className="text-[9px] text-emerald-600 font-mono">ADAPTIVE</span>
+                            <h3 className="font-bold text-emerald-900">Stripcode V9</h3>
+                            <span className="text-[10px] text-emerald-600 font-mono">ADAPTIVE TOPOLOGY</span>
                         </div>
                         <div className="flex items-center space-x-2">
+                             <label className="text-[10px] font-bold text-emerald-700 uppercase cursor-pointer">Liquid Reflow</label>
                              <input 
                                 type="checkbox" 
                                 checked={isLiquid} 
-                                id="reflow-check"
                                 onChange={(e) => setIsLiquid(e.target.checked)}
                                 className="accent-emerald-600 w-4 h-4 cursor-pointer"
                              />
-                             <label htmlFor="reflow-check" className="text-[9px] font-bold text-emerald-700 uppercase cursor-pointer">Reflow</label>
                         </div>
                     </div>
-                    <div className="p-6 flex-1 bg-neutral-50 min-h-[180px] sm:min-h-[250px] flex flex-col justify-center overflow-hidden">
-                        <div ref={stripContainerRef} className="w-full">
+                    {/* Container */}
+                    <div className="p-8 flex-1 bg-neutral-50 min-h-[250px] flex flex-col justify-center overflow-x-auto">
+                        {/* We use w-fit when not liquid to ensure the parent container scrolls instead of the inner component */}
+                        <div ref={stripContainerRef} className={isLiquid ? "w-full" : "w-fit min-w-full"}>
                             <StripCode 
                                 text={text} 
                                 height={32} 
@@ -290,10 +218,10 @@ export const ComparingPage: React.FC = () => {
                             />
                         </div>
                     </div>
-                    <div className="p-4 bg-white border-t border-neutral-100 text-[10px] sm:text-xs space-y-1 sm:space-y-2">
+                    <div className="p-4 bg-white border-t border-neutral-100 text-xs space-y-2">
                         <div className="flex justify-between">
                             <span className="text-neutral-500">Geometry:</span>
-                            <span className="font-mono">Ribbon</span>
+                            <span className="font-mono">Ribbon (Fixed Height)</span>
                         </div>
                         <div className="flex justify-between">
                             <span className="text-neutral-500">Surface (px²):</span>
@@ -303,21 +231,25 @@ export const ComparingPage: React.FC = () => {
                 </div>
 
                 {/* 2. QR CODE */}
-                <div className="bg-white rounded-xl border border-neutral-200 shadow-sm overflow-hidden flex flex-col">
-                    <div className="bg-neutral-50 p-3 sm:p-4 border-b border-neutral-200 flex justify-between items-center">
+                <div className="bg-white rounded-xl border border-neutral-200 shadow-sm overflow-hidden flex flex-col h-full">
+                    <div className="bg-neutral-50 p-4 border-b border-neutral-200 flex justify-between items-center">
                          <div className="flex flex-col">
-                            <h3 className="text-sm sm:text-base font-bold text-neutral-900">QR Code</h3>
-                            <span className="text-[9px] text-neutral-500 font-mono">ISO/IEC 18004:2024</span>
+                            <h3 className="font-bold text-neutral-900">QR Code (Model 2)</h3>
+                            <span className="text-[10px] text-neutral-500 font-mono">MATRIX TOPOLOGY</span>
                         </div>
-                        <span className="text-[9px] font-bold bg-neutral-200 text-neutral-600 px-2 py-1 rounded">2D</span>
+                        <span className="text-[10px] font-bold bg-neutral-200 text-neutral-600 px-2 py-1 rounded">2D</span>
                     </div>
-                    <div className="p-6 flex-1 flex flex-col items-center justify-center bg-neutral-50 min-h-[180px] sm:min-h-[250px]">
-                        <AuthenticQRCode text={text} />
+                    <div className="p-8 flex-1 flex flex-col items-center justify-center bg-neutral-50 min-h-[250px]">
+                        <AuthenticQRCode 
+                            matrix={qrData.matrix} 
+                            size={qrData.size} 
+                            error={!qrData.valid}
+                        />
                     </div>
-                    <div className="p-4 bg-white border-t border-neutral-100 text-[10px] sm:text-xs space-y-1 sm:space-y-2">
+                    <div className="p-4 bg-white border-t border-neutral-100 text-xs space-y-2">
                          <div className="flex justify-between">
                             <span className="text-neutral-500">Geometry:</span>
-                            <span className="font-mono">Square</span>
+                            <span className="font-mono">Square Matrix</span>
                         </div>
                         <div className="flex justify-between">
                             <span className="text-neutral-500">Surface (px²):</span>
@@ -327,21 +259,21 @@ export const ComparingPage: React.FC = () => {
                 </div>
 
                 {/* 3. BARCODE 1D */}
-                <div className="bg-white rounded-xl border border-neutral-200 shadow-sm overflow-hidden flex flex-col">
-                    <div className="bg-neutral-50 p-3 sm:p-4 border-b border-neutral-200 flex justify-between items-center">
+                <div className="bg-white rounded-xl border border-neutral-200 shadow-sm overflow-hidden flex flex-col h-full">
+                    <div className="bg-neutral-50 p-4 border-b border-neutral-200 flex justify-between items-center">
                         <div className="flex flex-col">
-                            <h3 className="text-sm sm:text-base font-bold text-neutral-900">Code 128</h3>
-                            <span className="text-[9px] text-neutral-500 font-mono">LINEAR</span>
+                            <h3 className="font-bold text-neutral-900">Code 128 (1D)</h3>
+                            <span className="text-[10px] text-neutral-500 font-mono">LINEAR TOPOLOGY</span>
                         </div>
-                        <span className="text-[9px] font-bold bg-neutral-200 text-neutral-600 px-2 py-1 rounded">1D</span>
+                        <span className="text-[10px] font-bold bg-neutral-200 text-neutral-600 px-2 py-1 rounded">1D</span>
                     </div>
-                    <div className="p-6 flex-1 flex flex-col items-center justify-center bg-neutral-50 min-h-[180px] sm:min-h-[250px] overflow-x-auto overflow-y-hidden no-scrollbar">
+                    <div className="p-8 flex-1 flex flex-col items-center justify-center bg-neutral-50 min-h-[250px] overflow-x-auto">
                         <Barcode128 text={text} />
                     </div>
-                    <div className="p-4 bg-white border-t border-neutral-100 text-[10px] sm:text-xs space-y-1 sm:space-y-2">
+                    <div className="p-4 bg-white border-t border-neutral-100 text-xs space-y-2">
                          <div className="flex justify-between">
                             <span className="text-neutral-500">Geometry:</span>
-                            <span className="font-mono">Linear</span>
+                            <span className="font-mono">Linear Horizontal</span>
                         </div>
                          <div className="flex justify-between">
                             <span className="text-neutral-500">Surface (px²):</span>
@@ -351,47 +283,52 @@ export const ComparingPage: React.FC = () => {
                 </div>
             </div>
 
-            {/* Detailed Stats Table (Responsive Scroll) */}
-            <div className="bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden mb-8 sm:mb-12">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-[11px] sm:text-sm text-left">
-                      <thead className="bg-neutral-50 text-neutral-500 font-semibold border-b border-neutral-200">
-                          <tr>
-                              <th className="py-3 sm:py-4 px-4 sm:px-6">METRIC</th>
-                              <th className="py-3 sm:py-4 px-4 sm:px-6 text-emerald-700">STRIPCODE V8</th>
-                              <th className="py-3 sm:py-4 px-4 sm:px-6">QR CODE</th>
-                              <th className="py-3 sm:py-4 px-4 sm:px-6">CODE 128</th>
-                          </tr>
-                      </thead>
-                      <tbody className="divide-y divide-neutral-100">
-                          <tr>
-                              <td className="py-3 sm:py-4 px-4 sm:px-6 font-bold text-neutral-800">Total Surface (px²)</td>
-                              <td className="py-3 sm:py-4 px-4 sm:px-6 text-emerald-700 font-bold">{stats.strip.area.toLocaleString()}</td>
-                              <td className="py-3 sm:py-4 px-4 sm:px-6">{stats.qr.area.toLocaleString()}</td>
-                              <td className="py-3 sm:py-4 px-4 sm:px-6">{stats.barcode.area.toLocaleString()}</td>
-                          </tr>
-                          <tr>
-                              <td className="py-3 sm:py-4 px-4 sm:px-6 font-bold text-neutral-800">Dimensions (Approx)</td>
-                              <td className="py-3 sm:py-4 px-4 sm:px-6 font-mono text-[10px] sm:text-xs">{stats.strip.dims}</td>
-                              <td className="py-3 sm:py-4 px-4 sm:px-6 font-mono text-[10px] sm:text-xs">{stats.qr.dims}</td>
-                              <td className="py-3 sm:py-4 px-4 sm:px-6 font-mono text-[10px] sm:text-xs">{stats.barcode.dims}</td>
-                          </tr>
-                          <tr>
-                              <td className="py-3 sm:py-4 px-4 sm:px-6 font-bold text-neutral-800">Protocol Std</td>
-                              <td className="py-3 sm:py-4 px-4 sm:px-6 text-emerald-700 font-medium">V8 A-G</td>
-                              <td className="py-3 sm:py-4 px-4 sm:px-6">ISO 18004:2024</td>
-                              <td className="py-3 sm:py-4 px-4 sm:px-6">ISO 15417</td>
-                          </tr>
-                      </tbody>
-                  </table>
-                </div>
+            {/* Detailed Stats Table */}
+            <div className="bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden mb-12">
+                <table className="w-full text-sm text-left">
+                    <thead className="bg-neutral-50 text-neutral-500 font-semibold border-b border-neutral-200">
+                        <tr>
+                            <th className="py-4 px-6">METRIC</th>
+                            <th className="py-4 px-6 text-emerald-700">STRIPCODE V9</th>
+                            <th className="py-4 px-6">QR CODE</th>
+                            <th className="py-4 px-6">CODE 128</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-neutral-100">
+                        <tr>
+                            <td className="py-4 px-6 font-bold text-neutral-800">Total Surface (px²)</td>
+                            <td className="py-4 px-6 text-emerald-700 font-bold">{stats.strip.area.toLocaleString()}</td>
+                            <td className="py-4 px-6">{stats.qr.area.toLocaleString()}</td>
+                            <td className="py-4 px-6">{stats.barcode.area.toLocaleString()}</td>
+                        </tr>
+                        <tr>
+                            <td className="py-4 px-6 font-bold text-neutral-800">Dimensions (Approx)</td>
+                            <td className="py-4 px-6 font-mono text-xs">{stats.strip.dims}</td>
+                            <td className="py-4 px-6 font-mono text-xs">{stats.qr.dims}</td>
+                            <td className="py-4 px-6 font-mono text-xs">{stats.barcode.dims}</td>
+                        </tr>
+                        <tr>
+                            <td className="py-4 px-6 font-bold text-neutral-800">Aspect Ratio</td>
+                            <td className="py-4 px-6 text-emerald-700 font-medium">Variable (Liquid)</td>
+                            <td className="py-4 px-6">1:1 (Rigid)</td>
+                            <td className="py-4 px-6">High (Linear)</td>
+                        </tr>
+                        <tr>
+                            <td className="py-4 px-6 font-bold text-neutral-800">Error Correction</td>
+                            <td className="py-4 px-6 text-emerald-700 font-medium">Rolling Hash (~25%)</td>
+                            <td className="py-4 px-6">Reed-Solomon (Standard M)</td>
+                            <td className="py-4 px-6 text-neutral-400">Check Digit Only</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
 
-             <div className="p-4 sm:p-6 bg-emerald-50 rounded-xl border border-emerald-100">
-                <h4 className="font-bold text-emerald-900 mb-1 sm:mb-2 text-sm sm:text-base">Efficiency Analysis</h4>
-                <p className="text-emerald-800 text-[11px] sm:text-sm leading-relaxed">
-                    <strong>Surface Area Efficiency:</strong> V8 eliminates massive finder patterns. 
-                    The adaptive zig-zag encoding in the updated QR implementation accurately reflects the data density required for valid ISO-compliant error correction, showcasing why V8 often requires significantly less vertical space than QR codes.
+             <div className="mt-8 p-6 bg-emerald-50 rounded-xl border border-emerald-100">
+                <h4 className="font-bold text-emerald-900 mb-2">Efficiency Analysis</h4>
+                <p className="text-emerald-800 text-sm leading-relaxed">
+                    <strong>Surface Area Efficiency:</strong> Stripcode V9 utilizes a split-byte architecture that eliminates the need for large quiet zones required by 1D barcodes and the massive finder patterns of QR codes. 
+                    <br/><br/>
+                    As shown in the data above, for short-to-medium length strings, V9 often requires significantly less vertical space than QR codes, making it ideal for <strong>edge-printing</strong> on documents or thin product spines. While 1D barcodes are horizontally efficient, they lack the data density to store complex alphanumeric strings without becoming unwieldy.
                 </p>
             </div>
 
