@@ -4,61 +4,64 @@ import StripCode from './StripCode';
 export const ScientificPaper: React.FC = () => {
   return (
     <div className="w-full bg-[#e8e8e8] py-12 px-4 flex justify-center font-serif text-[#000]">
-      <div className="bg-white shadow-xl w-full max-w-[816px] min-h-[1056px] p-[48px] text-[10pt] leading-[1.2]">
+      <div className="bg-white shadow-xl w-full max-w-[816px] min-h-[1056px] p-[48px] text-[10pt] leading-[1.3]">
         
         {/* HEADER */}
-        <div className="text-center mb-8">
-          <h1 className="text-[18pt] font-bold leading-tight mb-2">
-            On the Security of the V9 Optical Protocol<br/>for Analog Data Retention
+        <div className="text-center mb-10">
+          <h1 className="text-[18pt] font-bold leading-tight mb-2 uppercase">
+            Analisi Spettrale del Canto Primo:<br/>Encoding V9 dell'Ira Funesta
           </h1>
           <div className="text-[11pt] italic mb-4">
-            Dr. Elara Vance<sup>1</sup>, J. Doe<sup>2</sup>
+            Omero<sup>1</sup>, Vincenzo Monti<sup>2</sup>
           </div>
           <div className="text-[9pt]">
-            <sup>1</sup>Department of Optical Cryptography, University of Milan<br/>
-            <sup>2</sup>Stripcode Research Labs
+            <sup>1</sup>Archivio Storico Greco, Monte Olimpo<br/>
+            <sup>2</sup>Dipartimento di Traduzione Classica
           </div>
         </div>
 
         {/* TWO COLUMN LAYOUT */}
-        <div className="grid grid-cols-2 gap-6 text-justify">
+        <div className="grid grid-cols-2 gap-8 text-justify">
             
             {/* LEFT COL */}
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-6">
                 <div>
-                    <strong className="block text-[9pt] font-bold border-b border-black mb-1 uppercase">Abstract</strong>
+                    <strong className="block text-[9pt] font-bold border-b border-black mb-2 uppercase">Proemio</strong>
                     <p className="indent-4">
-                        We present a novel analysis of the Stripcode V9 protocol. Unlike traditional QR matrices, V9 utilizes a linear Timeline mechanism 
-                        <span className="inline-block align-middle mx-1 opacity-80" style={{ height: '14px' }}>
-                             {/* Inline Stripcode Example */}
-                             <StripCode text="TIMELINE_PHASE_SYNC" height={14} showLabels={false} verticalGap={0} revealTextOnHover={true} detailedTooltip={false} disableReflow={true} />
+                        Cantami, o Diva, del Pelìde Achille l'ira funesta che infiniti addusse lutti agli Achei, molte anzi tempo all'Orco generose travolse 
+                        <span className="inline-block align-baseline mx-1 opacity-80">
+                             <StripCode text="ALME_D_EROI_TRAVOLSE_ALL_ORCO_GENEROSE" height={16} showLabels={false} verticalGap={0} revealTextOnHover={true} detailedTooltip={false} disableReflow={true} />
                         </span>
-                        to ensure synchronization across curved surfaces. This paper demonstrates that while V9 is robust against shear distortion, it remains vulnerable to high-frequency optical noise.
+                        alme d'eroi, e di cani e d'augelli orrido pasto lor salme abbandonò (così di Giove l'alto consiglio s'adempìa), da quando primamente disgiunse aspra contesa.
                     </p>
                 </div>
 
                 <div>
-                    <strong className="block text-[9pt] font-bold border-b border-black mb-1 uppercase">1. Introduction</strong>
+                    <strong className="block text-[9pt] font-bold border-b border-black mb-2 uppercase">1. Il Re de' Prodi</strong>
                     <p className="indent-4 mb-2">
-                        The need for high-density, analog-compatible storage has driven the development of linear barcodes. The V9 standard [1] introduces a unique "split-byte" architecture with absolute positioning.
+                        Il re de' prodi Atride e il divo Achille. E qual de' numi inimicolli? Il figlio di Latona e di Giove. Irato al Re, destò nel campo un 
+                        <span className="inline-block align-baseline mx-1 opacity-80">
+                             <StripCode text="MORBO_ORRENDO_LA_GENTE_PERIA" height={16} showLabels={false} verticalGap={0} revealTextOnHover={true} detailedTooltip={false} disableReflow={true} />
+                        </span>
+                        morbo orrendo, e la gente perìa: colpa d'Atride che fece al sacerdote Crise onta.
                     </p>
                     <p className="indent-4">
-                        Data is encoded in 4-bit nibbles, protected by a rolling hash ECC [2]. The physical layer requires precise printing tolerances.
+                        Costui venuto agli annosi vascelli achei, per riscattar la figlia, infinite seco portava ricchezze.
                     </p>
                 </div>
 
                 <div>
-                    <strong className="block text-[9pt] font-bold border-b border-black mb-1 uppercase">2. Protocol Analysis</strong>
+                    <strong className="block text-[9pt] font-bold border-b border-black mb-2 uppercase">2. Analisi del Riscatto</strong>
                     <p className="indent-4 mb-2">
-                        The core innovation is the <span className="italic">Liquid Reflow</span> capability combined with the Row 7 Timeline.
+                        E in man le bende dell'arco lungi-saettante Apollo, avvolte allo scettro d'oro, e tutti i Greci pregava, e in prima i due d'Atreo figliuoli, ordinatori di genti:
                     </p>
-                    <div className="my-2 border-t border-b border-black py-2">
+                    <div className="my-4 border-t border-b border-black py-4">
                         <figure className="text-center">
                             <div className="grayscale">
-                                <StripCode text="RAW_PACKET_STREAM_DUMP_400DPI_SAMPLE_A" height={24} showLabels={false} revealTextOnHover={true} detailedTooltip={false} />
+                                <StripCode text="ATRIDAE_ET_ALII_BENE_OCREATI_ACHIVI_VOBIS_QUIDEM_DII_CONCEDANT" height={32} showLabels={false} revealTextOnHover={true} detailedTooltip={false} />
                             </div>
-                            <figcaption className="text-[8pt] mt-1 font-sans italic text-neutral-600">
-                                Fig 1. Raw packet stream captured at 400dpi.
+                            <figcaption className="text-[8pt] mt-2 font-sans italic text-neutral-600">
+                                Fig 1. Scansione metrica dell'esametro dattilico.
                             </figcaption>
                         </figure>
                     </div>
@@ -66,15 +69,29 @@ export const ScientificPaper: React.FC = () => {
             </div>
 
             {/* RIGHT COL */}
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-6">
                  <div>
-                    <strong className="block text-[9pt] font-bold border-b border-black mb-1 uppercase">3. Security Implications</strong>
+                    <strong className="block text-[9pt] font-bold border-b border-black mb-2 uppercase">3. La Preghiera</strong>
                     <p className="indent-4 mb-2">
-                        Our attack model assumes an adversary with access to a standard photocopier. 
-                        By modifying the parity bit <span className="inline-block align-middle mx-1"><StripCode text="PARITY_ERR_INJECT" height={10} showLabels={false} revealTextOnHover={true} detailedTooltip={false} disableReflow={true} /></span> in the 5th row, we can induce a collision in the ECC check.
+                        "Atridi, e voi tutti, o coturnati Achei, a voi concedano i Numi, che l'olimpiche case hanno in abitazione, di distruggere la città di Priamo, e 
+                        <span className="inline-block align-baseline mx-1">
+                            <StripCode text="FELICEMENTE_IN_PATRIA_FARE_RITORNO_MA_LA_CARI_FIGLIA" height={12} showLabels={false} revealTextOnHover={true} detailedTooltip={false} disableReflow={true} />
+                        </span>
+                        felicemente in patria far ritorno; ma la cara figlia a me sciogliete, e ricevete questi doni, venerando il figlio di Giove, il lungi-saettante Apollo."
                     </p>
                     <p className="indent-4">
-                         However, the overhead columns (LF/RF) provide a strong anchor that rejects 99.8% of malformed packets during the scanning phase.
+                         Allora tutti gli altri Achei con grida acclamaron che onorato fosse il sacerdote, e i ricchi doni accettati.
+                    </p>
+                </div>
+
+                <div>
+                    <strong className="block text-[9pt] font-bold border-b border-black mb-2 uppercase">4. Il Rifiuto</strong>
+                    <p className="indent-4">
+                        Ma ciò non piacque in cor ad Agamennone figlio d'Atreo, che anzi superbo il cacciò, minacciando e ingiuriando: "Vecchio, ch'io più non ti colga, o che or t'indugi presso le concave navi, o che poscia ci torni; che 
+                        <span className="inline-block align-baseline mx-1">
+                            <StripCode text="NULLA_T_GIOVEREBBE_LO_SCETTRO_E_LE_BENDE_DEL_DIO_NON_LA_SCIOGLIERO_IO" height={12} showLabels={false} revealTextOnHover={true} detailedTooltip={false} disableReflow={true} />
+                        </span>
+                        nulla ti gioverebbe lo scettro e le bende del Dio. Non la scioglierò io; prima la coglierà vecchiaia nella nostra magione in Argo, lungi dalla patria, mentre la tela tesse."
                     </p>
                 </div>
 
@@ -82,32 +99,32 @@ export const ScientificPaper: React.FC = () => {
 
                  {/* REFERENCES */}
                  <div className="mt-8 pt-4 border-t-2 border-black">
-                    <strong className="block text-[9pt] font-bold mb-2 uppercase">References</strong>
+                    <strong className="block text-[9pt] font-bold mb-2 uppercase">Riferimenti Bibliografici</strong>
                     <ul className="text-[8pt] space-y-3">
                         <li className="flex gap-2">
                             <span className="font-bold">[1]</span>
                             <div className="flex flex-col w-full">
-                                <span>V9 Standards Committee. <i>"Optical Data Retention in Paper Substrates."</i> 2024.</span>
+                                <span>Apollo, A. <i>"Frecce, Pestilenze e Dati."</i> Olimpo Journal, Vol 1.</span>
                                 <div className="mt-1 opacity-80 grayscale">
-                                    <StripCode text="REF_STD_COMM_24" height={12} showLabels={false} revealTextOnHover={true} detailedTooltip={false} disableReflow={true} />
+                                    <StripCode text="REF_APOLLO_ARCO_ARGENTEO_LUNGI_SAETTANTE" height={12} showLabels={false} revealTextOnHover={true} detailedTooltip={false} disableReflow={true} />
                                 </div>
                             </div>
                         </li>
                         <li className="flex gap-2">
                             <span className="font-bold">[2]</span>
                             <div className="flex flex-col w-full">
-                                <span>Shannon, C. & Turing, A. <i>"Rolling Hash Implementations for 4-bit Logic."</i> J. Crypt. 1948.</span>
+                                <span>Calcante, T. <i>"Profezie Digitali e Interpretazione degli Uccelli."</i></span>
                                 <div className="mt-1 opacity-80 grayscale">
-                                    <StripCode text="REF_SHANNON_48" height={12} showLabels={false} revealTextOnHover={true} detailedTooltip={false} disableReflow={true} />
+                                    <StripCode text="REF_CALCANTE_PROFETA_DEGLI_ACHEI_V9_PROTOCOL" height={12} showLabels={false} revealTextOnHover={true} detailedTooltip={false} disableReflow={true} />
                                 </div>
                             </div>
                         </li>
                         <li className="flex gap-2">
                             <span className="font-bold">[3]</span>
                             <div className="flex flex-col w-full">
-                                <span>Vance, E. <i>"The Geometry of Information."</i> Proceeding of CCS, 2023.</span>
+                                <span>Achille, P. <i>"Ira: Una Prospettiva Algoritmica."</i> Myrmidon Press.</span>
                                 <div className="mt-1 opacity-80 grayscale">
-                                    <StripCode text="REF_VANCE_23" height={12} showLabels={false} revealTextOnHover={true} detailedTooltip={false} disableReflow={true} />
+                                    <StripCode text="REF_PELIDE_ACHILLE_IRA_FUNESTA_INFINITI_LUTTI" height={12} showLabels={false} revealTextOnHover={true} detailedTooltip={false} disableReflow={true} />
                                 </div>
                             </div>
                         </li>
@@ -118,7 +135,7 @@ export const ScientificPaper: React.FC = () => {
 
         {/* FOOTER */}
         <div className="mt-12 text-center text-[8pt] border-t border-black pt-2">
-            ACM CCS '02, November 18-22, 2002, Washington, DC, USA. Copyright 2002 ACM 1-58113-612-9/02/0011...$5.00.
+            Estratto dal Libro I dell'Iliade. Traduzione di Vincenzo Monti (1810). V9 Encoding Standard.
         </div>
       </div>
     </div>
