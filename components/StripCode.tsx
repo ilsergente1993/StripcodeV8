@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { generateStripcodeV9, StripChunk, ROWS } from '../engine';
 
 // --- Constants matches engine.ts ---
@@ -68,58 +69,28 @@ const getColType = (col: number, chunk: StripChunk): string => {
 };
 
 // --- HELPER: Geometry & Zone ID ---
-// Rules:
-// 1. Finders & Quiet Zones are Full Height (R0-R7).
-// 2. Global Tracks (Clock R0, Parity R5, Sep R6, Time R7) exist only in Data columns.
-// 3. Core Data is R1-R4 in Data columns.
 const getZoneLayout = (col: number, row: number, chunk: StripChunk): { id: string, x: number, y: number, w: number, h: number } | null => {
     const totalCols = chunk.length;
 
     // 1. VERTICAL ZONES (Priority: Full Height R0-R7)
-    
-    // Left Finder (Cols 0-2)
-    if (col < 3) {
-        return { id: 'FINDER_L', x: 0, y: 0, w: 3, h: 8 };
-    }
-    // Left Quiet (Col 3)
-    if (col === 3) {
-        return { id: 'QUIET_L', x: 3, y: 0, w: 1, h: 8 };
-    }
-    // Right Quiet (Col Total-3)
-    if (col === totalCols - 3) {
-        return { id: 'QUIET_R', x: totalCols - 3, y: 0, w: 1, h: 8 };
-    }
-    // Right Finder (Cols Total-2 to Total)
+    if (col < 3) return { id: 'FINDER_L', x: 0, y: 0, w: 3, h: 8 };
+    if (col === 3) return { id: 'QUIET_L', x: 3, y: 0, w: 1, h: 8 };
+    if (col === totalCols - 3) return { id: 'QUIET_R', x: totalCols - 3, y: 0, w: 1, h: 8 };
     if (col >= totalCols - 2) {
-        // ID depends on specific RF type bits
         const rfType = getColType(col, chunk);
         return { id: `CORE_${rfType}`, x: totalCols - 2, y: 0, w: 2, h: 8 };
     }
 
-    // 2. HORIZONTAL ZONES (Restricted to Data Area: Cols 4 to L-4)
-    // Now we are strictly inside the data area.
-    
-    // R0: Clock A (Behaves like Timeline now, strictly horizontal in data area)
+    // 2. HORIZONTAL ZONES (Restricted to Data Area)
     if (row === 0) return { id: 'ROW_CLOCK', x: 4, y: 0, w: totalCols - 7, h: 1 };
-    
-    // R5: Parity
     if (row === 5) return { id: 'ROW_PARITY', x: 4, y: 5, w: totalCols - 7, h: 1 };
-    
-    // R6: Separator
     if (row === 6) return { id: 'ROW_SEPARATOR', x: 4, y: 6, w: totalCols - 7, h: 1 };
-    
-    // R7: Timeline
     if (row === 7) return { id: 'ROW_TIMELINE', x: 4, y: 7, w: totalCols - 7, h: 1 };
 
-    // 3. CORE DATA BLOCKS (R1-R4)
-    // We need to find start/end of current block type within the data area
+    // 3. CORE DATA BLOCKS
     const cType = getColType(col, chunk);
-    
-    // Scan backwards from current col to find start
     let start = col;
     while (start > 4 && getColType(start - 1, chunk) === cType) start--;
-    
-    // Scan forwards to find end
     let end = col;
     while (end < totalCols - 4 && getColType(end + 1, chunk) === cType) end++;
     
@@ -128,23 +99,16 @@ const getZoneLayout = (col: number, row: number, chunk: StripChunk): { id: strin
 
 // --- VISUALIZATION PALETTE ---
 const AREA_STYLES: Record<string, { fill: string, stroke: string, label: string }> = {
-    // Global Rows
     ROW_CLOCK:     { fill: 'rgba(239, 68, 68, 0.3)', stroke: '#dc2626', label: 'CLOCK A' }, 
     ROW_PARITY:    { fill: 'rgba(245, 158, 11, 0.3)', stroke: '#d97706', label: 'PARITY' }, 
     ROW_SEPARATOR: { fill: 'rgba(115, 115, 115, 0.3)', stroke: '#737373', label: 'SEPARATOR' }, 
     ROW_TIMELINE:  { fill: 'rgba(59, 130, 246, 0.3)', stroke: '#2563eb', label: 'TIMELINE' }, 
-
-    // Finders (Full Height R0-R7)
     FINDER_L:      { fill: 'rgba(23, 23, 23, 0.15)', stroke: '#404040', label: 'FINDER L' },
     CORE_RF_EVEN:  { fill: 'rgba(249, 115, 22, 0.2)', stroke: '#ea580c', label: 'RF: EVEN' },
     CORE_RF_ODD:   { fill: 'rgba(236, 72, 153, 0.2)', stroke: '#db2777', label: 'RF: ODD' },
     CORE_RF_END:   { fill: 'rgba(239, 68, 68, 0.2)', stroke: '#dc2626', label: 'RF: END' },
-
-    // Quiet (Full Height)
     QUIET_L:       { fill: 'rgba(255, 255, 255, 0.1)', stroke: '#e5e5e5', label: 'QUIET' },
     QUIET_R:       { fill: 'rgba(255, 255, 255, 0.1)', stroke: '#e5e5e5', label: 'QUIET' },
-
-    // Core Data (R1-R4)
     CORE_META_IDX: { fill: 'rgba(16, 185, 129, 0.2)', stroke: '#059669', label: 'META: IDX' }, 
     CORE_META_TOT: { fill: 'rgba(13, 148, 136, 0.2)', stroke: '#0d9488', label: 'META: TOT' }, 
     CORE_PAYLOAD:  { fill: 'rgba(59, 130, 246, 0.2)', stroke: '#3b82f6', label: 'PAYLOAD' },   
@@ -158,7 +122,6 @@ const ChunkCanvas: React.FC<ChunkCanvasProps> = ({ chunk, height, debugMode, pac
   const cellSize = height / ROWS;
   const width = chunk.length * cellSize;
 
-  // Pre-calculate unique zones
   const uniqueZones = useMemo(() => {
       const zones = new Map<string, { id: string, x: number, y: number, w: number, h: number }>();
       for (let c = 0; c < chunk.length; c++) {
@@ -179,10 +142,8 @@ const ChunkCanvas: React.FC<ChunkCanvasProps> = ({ chunk, height, debugMode, pac
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Reset
     ctx.clearRect(0, 0, width, height);
     
-    // --- 1. Draw Bits ---
     ctx.fillStyle = '#171717'; 
     chunk.forEach((col, x) => {
         col.forEach((bit, y) => {
@@ -191,17 +152,12 @@ const ChunkCanvas: React.FC<ChunkCanvasProps> = ({ chunk, height, debugMode, pac
     });
 
     if (debugMode) {
-        // --- 2. Draw Zones (Fills + Borders) ---
-        // We draw persistent fills for all zones to show structure
         ctx.lineWidth = 1;
         uniqueZones.forEach(z => {
             const style = AREA_STYLES[z.id];
             if (style) {
-                // Persistent Background
                 ctx.fillStyle = style.fill;
                 ctx.fillRect(z.x * cellSize, z.y * cellSize, z.w * cellSize, z.h * cellSize);
-                
-                // Persistent Border
                 ctx.strokeStyle = style.stroke;
                 ctx.globalAlpha = 0.4; 
                 ctx.strokeRect(z.x * cellSize, z.y * cellSize, z.w * cellSize, z.h * cellSize);
@@ -209,18 +165,13 @@ const ChunkCanvas: React.FC<ChunkCanvasProps> = ({ chunk, height, debugMode, pac
             }
         });
 
-        // --- 3. Draw Active Zone Highlight (Stronger) ---
         if (hoverZoneId) {
             const activeRects = uniqueZones.filter(z => z.id === hoverZoneId);
             const style = AREA_STYLES[hoverZoneId];
-            
             if (style && activeRects.length > 0) {
-                // Slightly darker fill for hover
-                // We use a trick: draw the fill again to darken the alpha blend
                 ctx.fillStyle = style.fill; 
                 ctx.strokeStyle = style.stroke;
                 ctx.lineWidth = 2;
-
                 activeRects.forEach(z => {
                     ctx.fillRect(z.x * cellSize, z.y * cellSize, z.w * cellSize, z.h * cellSize);
                     ctx.strokeRect(z.x * cellSize, z.y * cellSize, z.w * cellSize, z.h * cellSize);
@@ -228,17 +179,14 @@ const ChunkCanvas: React.FC<ChunkCanvasProps> = ({ chunk, height, debugMode, pac
             }
         }
     }
-
   }, [chunk, height, cellSize, width, debugMode, hoverZoneId, uniqueZones]);
 
   const handleMouseMove = (e: React.MouseEvent) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    
     const colIdx = Math.floor(x / cellSize);
     const rowIdx = Math.floor(y / cellSize);
 
@@ -246,18 +194,14 @@ const ChunkCanvas: React.FC<ChunkCanvasProps> = ({ chunk, height, debugMode, pac
         const layout = getZoneLayout(colIdx, rowIdx, chunk);
         const zoneId = layout ? layout.id : null;
         setHoverZoneId(zoneId);
-
         if (zoneId) {
             const style = AREA_STYLES[zoneId];
-            const zoneLabel = style ? style.label : zoneId;
-            const bitValue = chunk[colIdx][rowIdx] ? 1 : 0;
-
             onHover({ 
                 packetIdx: packetIndex, 
                 col: colIdx, 
                 row: rowIdx, 
-                zone: zoneLabel, 
-                bitValue 
+                zone: style ? style.label : zoneId, 
+                bitValue: chunk[colIdx][rowIdx] ? 1 : 0 
             }, e);
         }
     } else {
@@ -279,12 +223,7 @@ const ChunkCanvas: React.FC<ChunkCanvasProps> = ({ chunk, height, debugMode, pac
         height={height}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
-        style={{
-          width: width,
-          height: height,
-          display: 'block',
-          cursor: 'crosshair',
-        }}
+        style={{ width: width, height: height, display: 'block', cursor: 'crosshair' }}
       />
     </div>
   );
@@ -297,9 +236,9 @@ const Tooltip: React.FC<{ data: TooltipData }> = ({ data }) => {
   const isQuiet = data.zone === 'QUIET';
   const isFinder = data.zone.includes('FINDER') || data.zone.includes('RF');
 
-  return (
+  const content = (
     <div 
-      className="fixed z-50 pointer-events-none tooltip-glass border border-neutral-700 rounded-lg p-3 text-xs font-mono text-white min-w-[180px]"
+      className="fixed z-[9999] pointer-events-none tooltip-glass border border-neutral-700 rounded-lg p-3 text-xs font-mono text-white min-w-[180px]"
       style={{ 
         left: data.x + 20, 
         top: data.y + 20,
@@ -316,29 +255,15 @@ const Tooltip: React.FC<{ data: TooltipData }> = ({ data }) => {
         <span className="text-neutral-500">POS:</span> <span>R{data.row} : C{data.col}</span>
         <span className="text-neutral-500">VAL:</span> <span className={data.bitValue ? 'text-white font-bold' : 'text-neutral-600'}>{data.bitValue}</span>
         
-        {isRowZone && (
-             <div className="col-span-2 mt-1 pt-1 border-t border-neutral-800 text-[10px] text-neutral-500 italic">
-                Global Track (Data Only)
-             </div>
-        )}
-        {isQuiet && (
-             <div className="col-span-2 mt-1 pt-1 border-t border-neutral-800 text-[10px] text-neutral-500 italic">
-                Buffer Zone (Empty)
-             </div>
-        )}
-        {isFinder && (
-             <div className="col-span-2 mt-1 pt-1 border-t border-neutral-800 text-[10px] text-neutral-500 italic">
-                Anchor Pattern (Full Height)
-             </div>
-        )}
-        {!isRowZone && !isQuiet && !isFinder && (
-            <div className="col-span-2 mt-1 pt-1 border-t border-neutral-800 text-[10px] text-neutral-500 italic">
-                Data Core (Nibbles 1-4)
-             </div>
-        )}
+        {isRowZone && <div className="col-span-2 mt-1 pt-1 border-t border-neutral-800 text-[10px] text-neutral-500 italic">Global Track (Data Only)</div>}
+        {isQuiet && <div className="col-span-2 mt-1 pt-1 border-t border-neutral-800 text-[10px] text-neutral-500 italic">Buffer Zone (Empty)</div>}
+        {isFinder && <div className="col-span-2 mt-1 pt-1 border-t border-neutral-800 text-[10px] text-neutral-500 italic">Anchor Pattern (Full Height)</div>}
+        {!isRowZone && !isQuiet && !isFinder && <div className="col-span-2 mt-1 pt-1 border-t border-neutral-800 text-[10px] text-neutral-500 italic">Data Core (Nibbles 1-4)</div>}
       </div>
     </div>
   );
+
+  return createPortal(content, document.body);
 };
 
 const StripCode: React.FC<StripCodeProps> = ({ 
@@ -400,7 +325,7 @@ const StripCode: React.FC<StripCodeProps> = ({
         onMouseLeave={() => setIsContainerHovered(false)}
     >
         {revealTextOnHover && isContainerHovered && (
-            <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 z-40 bg-neutral-900 text-white text-[11px] font-mono px-3 py-1.5 rounded shadow-xl border border-neutral-700 whitespace-nowrap pointer-events-none opacity-0 group-hover/strip:opacity-100 transition-opacity duration-200">
+            <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 z-[9990] bg-neutral-900 text-white text-[11px] font-mono px-3 py-1.5 rounded shadow-xl border border-neutral-700 whitespace-nowrap pointer-events-none opacity-0 group-hover/strip:opacity-100 transition-opacity duration-200">
                 {text}
                 <div className="absolute bottom-[-4px] left-1/2 transform -translate-x-1/2 w-2 h-2 bg-neutral-900 border-r border-b border-neutral-700 rotate-45"></div>
             </div>

@@ -22,6 +22,8 @@ const TicketMockup = () => (
                         height={20} 
                         showLabels={false} 
                         disableReflow={true} 
+                        revealTextOnHover={true}
+                        detailedTooltip={false}
                     />
                  </div>
                  <div className="absolute bottom-6 left-1/2 -translate-x-1/2 -rotate-90 text-[8px] font-mono font-bold tracking-widest opacity-40 whitespace-nowrap">
@@ -103,6 +105,8 @@ const TicketMockup = () => (
                         height={24} 
                         showLabels={false} 
                         disableReflow={true} 
+                        revealTextOnHover={true}
+                        detailedTooltip={false}
                     />
                  </div>
             </div>
@@ -164,12 +168,14 @@ const ParcelMockup = () => (
              <div className="text-center font-bold text-[10px] uppercase mb-1">USPS TRACKING #</div>
              
              {/* Replaces Barcode - Large Stripcode with Wrapping */}
-             <div className="flex justify-center mb-1 bg-white border-y border-neutral-100 py-1">
+             <div className="flex justify-center mb-1 bg-white border-y border-neutral-100 py-1 w-full px-1">
                  <StripCode 
-                    text="9505_5120_1224_1110_0000_00" 
-                    height={24} // Reduced height to fit multiple lines if needed
+                    text="9505_5120_1224_1110_0000_00_LOGISTICS_RT_009" 
+                    height={24} // Reduced height to fit multiple lines
                     showLabels={false} 
-                    disableReflow={false} // Enable wrapping for better visibility
+                    disableReflow={false} // Enable wrapping
+                    revealTextOnHover={true}
+                    detailedTooltip={false}
                     className="grayscale"
                 />
              </div>
@@ -184,171 +190,221 @@ const ParcelMockup = () => (
                     height={16} 
                     showLabels={false} 
                     disableReflow={true} 
+                    revealTextOnHover={true}
+                    detailedTooltip={false}
                 />
              </div>
         </div>
     </div>
 );
 
-const BoardingPassMockup = () => (
-    <div className="relative w-[680px] h-[250px] bg-white rounded-xl overflow-hidden shadow-2xl flex font-sans">
-        {/* Main Section */}
-        <div className="flex-[3] flex flex-col relative">
-            {/* Blue Header */}
-            <div className="h-14 bg-[#0057b8] flex items-center justify-between px-6 text-white">
-                <div className="flex items-center gap-2">
-                    <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M21 16v-2l-8-5V3.5A1.5 1.5 0 0 0 11.5 2 1.5 1.5 0 0 0 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>
-                    <span className="font-bold tracking-wider italic text-lg">ITA AIRWAYS</span>
-                </div>
-                <div className="text-[10px] uppercase font-bold tracking-widest opacity-80">Boarding Pass</div>
-            </div>
-
-            {/* Info Body */}
-            <div className="flex-1 p-6 flex flex-col">
-                <div className="flex justify-between items-start mb-4">
-                    <div>
-                        <div className="text-[9px] uppercase text-neutral-400 font-bold">Passenger Name</div>
-                        <div className="text-lg font-bold text-neutral-800">ROSSI / MARIO MR</div>
-                    </div>
-                     <div className="text-right">
-                        <div className="text-[9px] uppercase text-neutral-400 font-bold">Flight</div>
-                        <div className="text-lg font-bold text-neutral-800">AZ 324</div>
-                    </div>
+const BoardingPassMockup = () => {
+    // Longer text to demonstrate wrapping on the main ticket
+    const encodedData = "AZ0324_CDG_FCO_22MAY_1510_ROSSI_MARIO_MR_ETKT0552102897424_SEQ004_OPERATED_BY_ITA_AIRWAYS_MAIN_CABIN_CHECKED_BAGGAGE_02";
+    
+    return (
+        <div className="relative w-[720px] h-[260px] bg-white rounded-xl overflow-hidden shadow-2xl flex font-sans">
+             {/* Left (Main Ticket) */}
+             <div className="flex-[3.5] flex flex-col border-r-2 border-dashed border-neutral-200 relative overflow-hidden">
+                {/* Header */}
+                <div className="h-14 bg-[#000080] flex items-center justify-between px-6 text-white">
+                     <div className="flex items-center gap-2">
+                        <span className="font-black italic text-2xl tracking-tighter">ITA</span>
+                        <span className="font-light uppercase text-[10px] tracking-widest mt-1 opacity-80">Airways</span>
+                     </div>
+                     <div className="text-[10px] font-bold uppercase tracking-widest opacity-80">Boarding Pass</div>
                 </div>
 
-                <div className="flex gap-8 mb-4">
-                    <div>
-                        <div className="text-[9px] uppercase text-neutral-400 font-bold">From</div>
-                        <div className="text-xl font-bold text-neutral-800">PARIS <span className="text-sm text-neutral-400 font-normal">CDG</span></div>
+                {/* Body */}
+                <div className="p-5 flex-1 flex flex-col justify-between">
+                    <div className="flex justify-between items-start">
+                         <div>
+                            <div className="text-[9px] uppercase text-neutral-400 font-bold tracking-wide">Passenger Name</div>
+                            <div className="text-lg font-bold text-neutral-900">ROSSI / MARIO MR</div>
+                         </div>
+                         <div className="text-right">
+                            <div className="text-[9px] uppercase text-neutral-400 font-bold tracking-wide">Class</div>
+                            <div className="text-lg font-bold text-neutral-900">ECONOMY</div>
+                         </div>
                     </div>
-                    <div>
-                        <div className="text-[9px] uppercase text-neutral-400 font-bold">To</div>
-                        <div className="text-xl font-bold text-neutral-800">ROME <span className="text-sm text-neutral-400 font-normal">FCO</span></div>
+
+                    <div className="flex gap-12 mt-1">
+                        <div>
+                            <div className="text-[9px] uppercase text-neutral-400 font-bold tracking-wide">From</div>
+                            <div className="text-xl font-bold text-neutral-900">PARIS <span className="text-sm font-normal text-neutral-400">CDG</span></div>
+                        </div>
+                         <div className="flex items-center pt-2 text-neutral-300">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                         </div>
+                        <div>
+                            <div className="text-[9px] uppercase text-neutral-400 font-bold tracking-wide">To</div>
+                            <div className="text-xl font-bold text-neutral-900">ROME <span className="text-sm font-normal text-neutral-400">FCO</span></div>
+                        </div>
                     </div>
-                    <div>
-                        <div className="text-[9px] uppercase text-neutral-400 font-bold">Date</div>
-                        <div className="text-xl font-bold text-neutral-800">22 MAY</div>
+
+                    <div className="grid grid-cols-4 gap-4 mt-2 p-2 bg-neutral-50 rounded border border-neutral-100">
+                         <div>
+                            <div className="text-[8px] uppercase text-neutral-400 font-bold tracking-wide">Flight</div>
+                            <div className="text-base font-black text-neutral-900">AZ324</div>
+                         </div>
+                         <div>
+                            <div className="text-[8px] uppercase text-neutral-400 font-bold tracking-wide">Date</div>
+                            <div className="text-base font-bold text-neutral-900">22MAY</div>
+                         </div>
+                         <div>
+                            <div className="text-[8px] uppercase text-neutral-400 font-bold tracking-wide">Boarding</div>
+                            <div className="text-base font-bold text-neutral-900">14:30</div>
+                         </div>
+                         <div>
+                            <div className="text-[8px] uppercase text-neutral-400 font-bold tracking-wide">Gate</div>
+                            <div className="text-base font-black text-neutral-900">A68</div>
+                         </div>
                     </div>
-                     <div>
-                        <div className="text-[9px] uppercase text-neutral-400 font-bold">Time</div>
-                        <div className="text-xl font-bold text-neutral-800">15:10</div>
+
+                    {/* Stripcode Section - Full Width, Wrapping Enabled, Constrained Width */}
+                    <div className="mt-2 pt-2 relative border-t border-neutral-100">
+                        {/* Max Width added to prevent overflowing the flex container */}
+                        <div className="w-full max-w-[500px]">
+                            <StripCode 
+                                text={encodedData}
+                                height={24}
+                                showLabels={false}
+                                revealTextOnHover={true}
+                                detailedTooltip={false}
+                                disableReflow={false} // Allow wrapping
+                                verticalGap={4}
+                                className="grayscale opacity-90"
+                            />
+                        </div>
                     </div>
+                </div>
+             </div>
+
+             {/* Stub (Right) */}
+             <div className="flex-1 flex flex-col bg-white min-w-[180px]">
+                <div className="h-14 bg-[#000080] flex items-center justify-center text-white">
+                    <span className="font-black italic text-lg tracking-tighter">ITA</span>
+                </div>
+                <div className="p-4 flex-1 flex flex-col">
+                    <div className="space-y-3 mb-2">
+                        <div>
+                            <div className="text-[8px] uppercase text-neutral-400 font-bold">Passenger</div>
+                            <div className="text-sm font-bold text-neutral-900 truncate">ROSSI/MARIO</div>
+                        </div>
+                        <div className="flex justify-between">
+                            <div>
+                                <div className="text-[8px] uppercase text-neutral-400 font-bold">Flight</div>
+                                <div className="text-sm font-bold text-neutral-900">AZ324</div>
+                            </div>
+                             <div>
+                                <div className="text-[8px] uppercase text-neutral-400 font-bold">Date</div>
+                                <div className="text-sm font-bold text-neutral-900">22MAY</div>
+                            </div>
+                        </div>
+                        <div>
+                            <div className="text-[8px] uppercase text-neutral-400 font-bold">Seat</div>
+                            <div className="text-2xl font-black text-neutral-900 text-center bg-neutral-100 rounded py-1">47A</div>
+                        </div>
+                    </div>
+
+                    {/* Stub Stripcode - Same text, wrapped, SMALLER HEIGHT */}
+                    <div className="mt-auto border-t border-neutral-100 pt-2 overflow-hidden">
+                         <StripCode 
+                                text={encodedData}
+                                height={12} // Reduced height
+                                showLabels={false}
+                                revealTextOnHover={true}
+                                detailedTooltip={false}
+                                disableReflow={false}
+                                verticalGap={1}
+                                className="grayscale opacity-80"
+                            />
+                    </div>
+                </div>
+             </div>
+        </div>
+    );
+};
+
+const SecureIDMockup = () => (
+    <div className="relative w-[450px] h-[280px] bg-white rounded-2xl overflow-hidden shadow-2xl border border-neutral-200 font-sans flex flex-col text-neutral-900">
+        
+        {/* Top Header with Stripcode - Calculated density for full width fill */}
+        <div className="pt-5 px-6 pb-4 bg-neutral-900 flex flex-col items-center relative shadow-sm">
+             <div className="w-full flex justify-center invert opacity-90">
+                <StripCode 
+                    text="S10010010019770201110201" 
+                    height={44} // Calculated height to fill ~400px width with 24 chars (approx density)
+                    showLabels={false} 
+                    disableReflow={true}
+                    revealTextOnHover={true}
+                    detailedTooltip={false}
+                />
+             </div>
+        </div>
+        
+        {/* Magnetic Stripe (Decorative) */}
+        <div className="w-full h-8 bg-[#1a1a1a] border-t border-neutral-700 relative overflow-hidden">
+             <div className="absolute top-0 right-0 bottom-0 w-24 bg-gradient-to-l from-white/10 to-transparent"></div>
+        </div>
+
+        {/* Main Content Area */}
+        <div className="flex-1 p-5 flex gap-4 bg-white relative">
+            
+            {/* Holographic Watermark Overlay */}
+            <div className="absolute right-4 bottom-4 w-20 h-20 rounded-full bg-gradient-to-tr from-emerald-100/40 to-blue-100/40 blur-2xl pointer-events-none"></div>
+
+            {/* Left Text Info */}
+            <div className="w-[140px] text-[7px] font-bold leading-[1.3] text-neutral-500 flex flex-col relative z-10">
+                <div className="flex items-center gap-1.5 mb-3">
+                    <div className="w-3 h-3 bg-red-600 rounded-[1px] shadow-sm"></div>
+                    <span className="text-[11px] font-black text-neutral-900 tracking-tight leading-none">MEDICAL<br/>ALERT</span>
                 </div>
                 
-                <div className="mt-auto flex items-end justify-between">
-                     {/* Stripcode replacing Barcode */}
-                     <div className="w-[300px]">
-                         <StripCode 
-                            text="AZ324_CDG_FCO_22MAY_1510_ROSSI_MARIO_47A_SEQ004_ETKT055210" 
-                            height={24} 
+                <div className="space-y-2 border-l-2 border-neutral-100 pl-2">
+                    <p className="uppercase">
+                        <span className="text-neutral-900">Encoded Data:</span><br/>
+                        Birth, Expiration, Revision, & Transaction Dates.
+                    </p>
+                    <p className="uppercase">
+                        <span className="text-neutral-900">Identity:</span><br/>
+                        DL/ID Card #, Name, Address, Gender.
+                    </p>
+                    <p className="uppercase">
+                        <span className="text-neutral-900">System:</span><br/>
+                        Issuing State & Inventory Control #.
+                    </p>
+                </div>
+                
+                {/* Vertical Text */}
+                <div className="absolute right-[-14px] top-10 text-xl tracking-[0.3em] origin-center rotate-90 text-neutral-100 font-black select-none pointer-events-none">
+                    SECURE
+                </div>
+            </div>
+
+            {/* Right: DENSE Stripcode Body */}
+            <div className="flex-1 flex items-start justify-center pt-1 z-10 overflow-hidden">
+                <div className="border border-neutral-100 bg-neutral-50/50 p-2 w-full rounded h-full flex items-center">
+                    <div className="w-full max-w-[200px]">
+                        <StripCode 
+                            text="MEDICAL_ALERT_SYSTEM_ID_88292_DOB_1985_05_12_EXP_2030_NO_ALLERGIES_TYPE_A_POS_DONOR_YES_CONTACT_ICE" 
+                            height={14} // Reduced height further to prevent overflow
                             showLabels={false} 
-                            disableReflow={false} 
-                            verticalGap={4}
+                            disableReflow={false} // Allow wrapping
+                            verticalGap={2} // Tiny gap between strips
+                            revealTextOnHover={true}
+                            detailedTooltip={false}
                             className="grayscale opacity-90"
                         />
-                     </div>
-                     
-                     <div className="text-center">
-                         <div className="text-[9px] uppercase text-neutral-400 font-bold">Seat</div>
-                         <div className="text-3xl font-black text-neutral-900">47A</div>
-                     </div>
+                    </div>
                 </div>
             </div>
         </div>
 
-        {/* Perforation */}
-        <div className="w-[2px] relative flex flex-col items-center justify-center bg-white">
-             <div className="absolute top-0 bottom-0 border-l-2 border-dashed border-neutral-200"></div>
-        </div>
-
-        {/* Stub Section */}
-        <div className="flex-1 flex flex-col bg-white border-l border-neutral-100">
-             <div className="h-10 bg-[#0057b8] flex items-center justify-center text-white">
-                <span className="font-bold text-xs tracking-wider italic">ITA</span>
-            </div>
-            <div className="p-4 flex-1 flex flex-col gap-3">
-                 <div>
-                    <div className="text-[8px] uppercase text-neutral-400 font-bold">Passenger</div>
-                    <div className="text-sm font-bold text-neutral-800 truncate">ROSSI/MARIO</div>
-                </div>
-                <div className="flex justify-between">
-                    <div>
-                        <div className="text-[8px] uppercase text-neutral-400 font-bold">Flight</div>
-                        <div className="text-sm font-bold text-neutral-800">AZ 324</div>
-                    </div>
-                    <div>
-                        <div className="text-[8px] uppercase text-neutral-400 font-bold">Seat</div>
-                        <div className="text-xl font-black text-neutral-800">47A</div>
-                    </div>
-                </div>
-                <div className="flex justify-between">
-                     <div>
-                        <div className="text-[8px] uppercase text-neutral-400 font-bold">Gate</div>
-                        <div className="text-sm font-bold text-neutral-800">A68</div>
-                    </div>
-                     <div>
-                        <div className="text-[8px] uppercase text-neutral-400 font-bold">Zone</div>
-                        <div className="text-sm font-bold text-neutral-800">3</div>
-                    </div>
-                </div>
-                
-                 {/* Small vertical stripcode on stub */}
-                 <div className="mt-auto pt-2 border-t border-neutral-100">
-                     <StripCode 
-                        text="AZ324_STUB_47A" 
-                        height={16} 
-                        showLabels={false} 
-                        disableReflow={true} 
-                        className="grayscale opacity-60"
-                    />
-                 </div>
-            </div>
-        </div>
-    </div>
-);
-
-const IDCardMockup = () => (
-    <div className="relative w-[380px] h-[220px] bg-[#e3e5e8] rounded-xl overflow-hidden shadow-xl border border-white/50 flex font-sans">
-        {/* Photo Area */}
-        <div className="w-1/3 bg-neutral-300 relative overflow-hidden">
-             <div className="absolute inset-0 bg-neutral-400 flex items-center justify-center text-neutral-500">
-                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
-                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                    <circle cx="12" cy="7" r="4"></circle>
-                </svg>
-             </div>
-             <div className="absolute bottom-0 left-0 right-0 h-1/2 bg-gradient-to-t from-black/50 to-transparent"></div>
-        </div>
-
-        {/* Info Area */}
-        <div className="flex-1 p-5 flex flex-col relative">
-             {/* Holographic Overlay Effect */}
-             <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/20 to-transparent opacity-50 pointer-events-none"></div>
-
-             <div className="flex justify-between items-start mb-2">
-                <div>
-                    <div className="text-[8px] uppercase font-bold text-neutral-500 tracking-wider">Department of Defense</div>
-                    <div className="text-lg font-bold text-neutral-800 leading-none mt-1">ACCESS CARD</div>
-                </div>
-                <div className="w-6 h-6 rounded-full bg-yellow-400 border-2 border-white shadow-sm"></div>
-             </div>
-
-             <div className="space-y-1 mt-2">
-                <div className="text-[9px] text-neutral-500 uppercase">Operative</div>
-                <div className="font-mono text-sm font-bold text-neutral-900">J. DOE</div>
-             </div>
-
-             {/* Stripcode at bottom */}
-             <div className="mt-auto pt-3 border-t border-neutral-300/50">
-                <div className="mix-blend-multiply opacity-80">
-                    <StripCode 
-                        text="ACCESS_LEVEL_5_CLEARANCE_ALPHA" 
-                        height={16} 
-                        showLabels={false} 
-                        disableReflow={true} 
-                    />
-                </div>
-             </div>
+        {/* Bottom OCR Text */}
+        <div className="px-6 pb-3 pt-2 font-mono text-[8px] leading-tight tracking-[0.15em] text-neutral-400 uppercase border-t border-neutral-100 bg-neutral-50/30">
+            IDUSAS1001001&lt;0&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;<br/>
+            7702010F1502020USA&lt;&lt;&lt;&lt;&lt;&lt;&lt;MI&lt;0
         </div>
     </div>
 );
@@ -367,7 +423,7 @@ const App: React.FC = () => {
       { id: 'ticket', component: <TicketMockup />, label: 'Event Ticketing', desc: 'Seamless stub integration.' },
       { id: 'parcel', component: <ParcelMockup />, label: 'Parcel Delivery', desc: 'High-speed tracking for logistics.' },
       { id: 'boarding', component: <BoardingPassMockup />, label: 'Boarding Pass', desc: 'Multi-line encoding for travel docs.' },
-      { id: 'id', component: <IDCardMockup />, label: 'Secure Access', desc: 'Embedded visual credentials.' }
+      { id: 'id', component: <SecureIDMockup />, label: 'Medical Data Card', desc: 'High-density medical record encoding.' }
   ];
 
   const nextDocSlide = () => setDocSlideIndex((prev) => (prev + 1) % docSlides.length);

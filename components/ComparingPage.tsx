@@ -5,7 +5,6 @@ import QRCode from 'qrcode';
 
 // --- VISUAL GENERATOR: BARCODE 128 (Authentic Look) ---
 const Barcode128: React.FC<{ text: string, scale?: number }> = ({ text, scale = 2 }) => {
-    // Visual approximation of Code 128B
     const generatePattern = (str: string) => {
         const patterns: number[] = [];
         patterns.push(2,1,1,2,1,4); // Start B
@@ -47,9 +46,69 @@ const Barcode128: React.FC<{ text: string, scale?: number }> = ({ text, scale = 
     );
 };
 
+// --- VISUAL GENERATOR: PDF417 (Authentic Stacked Look) ---
+const BarcodePDF417: React.FC<{ text: string }> = ({ text }) => {
+    // PDF417 Structure:
+    // Uses a finer scale to simulate density
+    const rowCount = Math.max(6, Math.min(24, Math.ceil(text.length / 5)));
+    const dataCols = 3; 
+    const scale = 1.5; // Finer pixel scale
+    const rowHeight = 4; // Tighter rows
+
+    const renderCodeword = (seed: number, isStartOrStop: boolean = false) => {
+        if (isStartOrStop) {
+             return (
+                <div className="flex h-full">
+                    <div className="bg-black" style={{ width: 4 * scale }}></div>
+                    <div className="bg-white" style={{ width: 1 * scale }}></div>
+                    <div className="bg-black" style={{ width: 1 * scale }}></div>
+                    <div className="bg-white" style={{ width: 1 * scale }}></div>
+                </div>
+             )
+        }
+
+        const bars = [];
+        let r = seed;
+        for(let i=0; i<4; i++) {
+             r = (r * 9301 + 49297) % 233280;
+             const wBar = (r % 3) + 1;
+             const wSpace = ((r >> 2) % 3) + 1;
+             bars.push({ b: wBar, s: wSpace });
+        }
+
+        return (
+            <div className="flex h-full border-r border-white/0">
+                {bars.map((b, i) => (
+                    <React.Fragment key={i}>
+                        <div className="bg-black" style={{ width: b.b * scale }}></div>
+                        <div className="bg-white" style={{ width: b.s * scale }}></div>
+                    </React.Fragment>
+                ))}
+            </div>
+        );
+    };
+
+    return (
+        <div className="inline-flex flex-col bg-white p-2 border border-neutral-200 shadow-sm">
+            {Array.from({ length: rowCount }).map((_, r) => (
+                <div key={r} className="flex" style={{ height: rowHeight }}>
+                    {renderCodeword(0, true)}
+                    {renderCodeword(r * 101)}
+                    {Array.from({ length: dataCols }).map((_, c) => (
+                        <div key={c}>
+                            {renderCodeword((r * dataCols + c) * (text.charCodeAt(c % text.length) || 1))}
+                        </div>
+                    ))}
+                    {renderCodeword(r * 202)}
+                    {renderCodeword(0, true)}
+                </div>
+            ))}
+        </div>
+    );
+}
+
 // --- REAL GENERATOR: QR CODE (ISO/IEC 18004) ---
 const AuthenticQRCode: React.FC<{ matrix: boolean[][], size: number, moduleSize?: number, error?: boolean }> = ({ matrix, size, moduleSize = 4, error }) => {
-    
     if (error) {
         return (
             <div className="bg-red-50 p-6 border border-red-200 rounded text-center">
@@ -58,9 +117,7 @@ const AuthenticQRCode: React.FC<{ matrix: boolean[][], size: number, moduleSize?
             </div>
         );
     }
-
     if (size === 0) return null;
-
     return (
         <div className="bg-white p-2 inline-block shadow-sm">
             <div 
@@ -89,21 +146,16 @@ const AuthenticQRCode: React.FC<{ matrix: boolean[][], size: number, moduleSize?
 export const ComparingPage: React.FC = () => {
   const [text, setText] = useState("V9_PROTOCOL_COMPARISON");
   const [containerWidth, setContainerWidth] = useState(600);
-  const [isLiquid, setIsLiquid] = useState(true); // Toggle State
+  const [isLiquid, setIsLiquid] = useState(true); 
   const stripContainerRef = useRef<HTMLDivElement>(null);
 
-  // --- QR GENERATION (ISO/IEC 18004) ---
   const qrData = useMemo(() => {
     try {
         if (!text) return { valid: true, size: 0, matrix: [] };
-        
-        // Generate QR using library (Error Correction Level M is standard for comparisons)
-        // @ts-ignore - QRCode types might be missing in this env
+        // @ts-ignore
         const qr = QRCode.create(text, { errorCorrectionLevel: 'M' });
         const size = qr.modules.size;
         const data = qr.modules.data;
-        
-        // Convert flat Uint8Array to 2D Boolean Matrix
         const grid: boolean[][] = [];
         for (let y = 0; y < size; y++) {
             const row: boolean[] = [];
@@ -112,7 +164,6 @@ export const ComparingPage: React.FC = () => {
             }
             grid.push(row);
         }
-        
         return { valid: true, size, matrix: grid };
     } catch (e) {
         console.warn("QR Gen Error:", e);
@@ -120,9 +171,7 @@ export const ComparingPage: React.FC = () => {
     }
   }, [text]);
 
-  // --- STATS CALCULATION ---
   const stats = useMemo(() => {
-    // For calculation purposes, if liquid is off, we calculate assuming a single long line (infinite width)
     const calcWidth = isLiquid && stripContainerRef.current ? stripContainerRef.current.offsetWidth : 10000;
     const stripHeight = 32;
     const chunks = generateStripcodeV9(text, calcWidth, stripHeight);
@@ -130,7 +179,6 @@ export const ComparingPage: React.FC = () => {
     const stripPixelArea = chunks.reduce((acc, chunk) => acc + (chunk.length * (stripHeight/ROWS) * stripHeight), 0);
     const stripDims = `${chunks.length > 0 ? chunks.reduce((a,c)=>a+(c.length*(stripHeight/ROWS)),0) : 0} x ${stripHeight}`;
 
-    // QR Stats (Real Data)
     const qrModuleSize = 4;
     const qrDim = qrData.valid ? qrData.size : 0;
     const qrPixelArea = (qrDim * qrModuleSize) * (qrDim * qrModuleSize);
@@ -141,10 +189,17 @@ export const ComparingPage: React.FC = () => {
     const barcodePixelArea = barcodeWidth * barcodeHeight;
     const barcodeDims = `${barcodeWidth} x ${barcodeHeight}`;
 
+    const pdfRows = Math.max(6, Math.min(24, Math.ceil(text.length / 5)));
+    const pdfWidth = 140; 
+    const pdfHeight = pdfRows * 4; 
+    const pdfPixelArea = pdfWidth * pdfHeight * 1.5; 
+    const pdfDims = `${pdfWidth} x ${pdfHeight}`;
+
     return {
         strip: { area: stripPixelArea, dims: stripDims },
         qr: { area: qrPixelArea, dims: qrDims },
-        barcode: { area: barcodePixelArea, dims: barcodeDims }
+        barcode: { area: barcodePixelArea, dims: barcodeDims },
+        pdf: { area: pdfPixelArea, dims: pdfDims }
     };
   }, [text, containerWidth, isLiquid, qrData]);
 
@@ -162,7 +217,6 @@ export const ComparingPage: React.FC = () => {
   return (
     <div className="h-full overflow-y-auto bg-neutral-100 pb-20">
         <div className="max-w-7xl mx-auto py-12 px-6">
-            
             <div className="text-center mb-12">
                 <h2 className="text-3xl font-bold text-neutral-900 mb-4">Technology Comparison</h2>
                 <p className="text-neutral-500 max-w-2xl mx-auto">
@@ -170,7 +224,6 @@ export const ComparingPage: React.FC = () => {
                 </p>
             </div>
 
-            {/* Interactive Control */}
             <div className="bg-white p-6 rounded-xl shadow-sm border border-neutral-200 mb-12 sticky top-4 z-20">
                  <label className="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2 block">Test Data Input</label>
                  <input 
@@ -186,10 +239,7 @@ export const ComparingPage: React.FC = () => {
                  </div>
             </div>
 
-            {/* Visual Comparison Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-16 items-start">
-                
-                {/* 1. STRIPCODE V9 */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16 items-start">
                 <div className="bg-white rounded-xl border-2 border-emerald-500/20 shadow-lg overflow-hidden flex flex-col relative h-full">
                     <div className="bg-emerald-50 p-4 border-b border-emerald-100 flex justify-between items-center">
                         <div className="flex flex-col">
@@ -206,9 +256,7 @@ export const ComparingPage: React.FC = () => {
                              />
                         </div>
                     </div>
-                    {/* Container */}
                     <div className="p-8 flex-1 bg-neutral-50 min-h-[250px] flex flex-col justify-center overflow-x-auto">
-                        {/* We use w-fit when not liquid to ensure the parent container scrolls instead of the inner component */}
                         <div ref={stripContainerRef} className={isLiquid ? "w-full" : "w-fit min-w-full"}>
                             <StripCode 
                                 text={text} 
@@ -230,7 +278,6 @@ export const ComparingPage: React.FC = () => {
                     </div>
                 </div>
 
-                {/* 2. QR CODE */}
                 <div className="bg-white rounded-xl border border-neutral-200 shadow-sm overflow-hidden flex flex-col h-full">
                     <div className="bg-neutral-50 p-4 border-b border-neutral-200 flex justify-between items-center">
                          <div className="flex flex-col">
@@ -258,7 +305,6 @@ export const ComparingPage: React.FC = () => {
                     </div>
                 </div>
 
-                {/* 3. BARCODE 1D */}
                 <div className="bg-white rounded-xl border border-neutral-200 shadow-sm overflow-hidden flex flex-col h-full">
                     <div className="bg-neutral-50 p-4 border-b border-neutral-200 flex justify-between items-center">
                         <div className="flex flex-col">
@@ -281,9 +327,31 @@ export const ComparingPage: React.FC = () => {
                         </div>
                     </div>
                 </div>
+
+                <div className="bg-white rounded-xl border border-neutral-200 shadow-sm overflow-hidden flex flex-col h-full">
+                    <div className="bg-neutral-50 p-4 border-b border-neutral-200 flex justify-between items-center">
+                        <div className="flex flex-col">
+                            <h3 className="font-bold text-neutral-900">PDF417</h3>
+                            <span className="text-[10px] text-neutral-500 font-mono">STACKED LINEAR</span>
+                        </div>
+                        <span className="text-[10px] font-bold bg-neutral-200 text-neutral-600 px-2 py-1 rounded">2D/Stacked</span>
+                    </div>
+                    <div className="p-8 flex-1 flex flex-col items-center justify-center bg-neutral-50 min-h-[250px] overflow-x-auto">
+                        <BarcodePDF417 text={text} />
+                    </div>
+                    <div className="p-4 bg-white border-t border-neutral-100 text-xs space-y-2">
+                         <div className="flex justify-between">
+                            <span className="text-neutral-500">Geometry:</span>
+                            <span className="font-mono">Stacked Rows</span>
+                        </div>
+                         <div className="flex justify-between">
+                            <span className="text-neutral-500">Surface (px²):</span>
+                            <span className="font-mono font-bold">{stats.pdf.area.toLocaleString()}</span>
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            {/* Detailed Stats Table */}
             <div className="bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden mb-12">
                 <table className="w-full text-sm text-left">
                     <thead className="bg-neutral-50 text-neutral-500 font-semibold border-b border-neutral-200">
@@ -292,6 +360,7 @@ export const ComparingPage: React.FC = () => {
                             <th className="py-4 px-6 text-emerald-700">STRIPCODE V9</th>
                             <th className="py-4 px-6">QR CODE</th>
                             <th className="py-4 px-6">CODE 128</th>
+                            <th className="py-4 px-6">PDF417</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-neutral-100">
@@ -300,24 +369,28 @@ export const ComparingPage: React.FC = () => {
                             <td className="py-4 px-6 text-emerald-700 font-bold">{stats.strip.area.toLocaleString()}</td>
                             <td className="py-4 px-6">{stats.qr.area.toLocaleString()}</td>
                             <td className="py-4 px-6">{stats.barcode.area.toLocaleString()}</td>
+                            <td className="py-4 px-6">{stats.pdf.area.toLocaleString()}</td>
                         </tr>
                         <tr>
                             <td className="py-4 px-6 font-bold text-neutral-800">Dimensions (Approx)</td>
                             <td className="py-4 px-6 font-mono text-xs">{stats.strip.dims}</td>
                             <td className="py-4 px-6 font-mono text-xs">{stats.qr.dims}</td>
                             <td className="py-4 px-6 font-mono text-xs">{stats.barcode.dims}</td>
+                            <td className="py-4 px-6 font-mono text-xs">{stats.pdf.dims}</td>
                         </tr>
                         <tr>
                             <td className="py-4 px-6 font-bold text-neutral-800">Aspect Ratio</td>
                             <td className="py-4 px-6 text-emerald-700 font-medium">Variable (Liquid)</td>
                             <td className="py-4 px-6">1:1 (Rigid)</td>
                             <td className="py-4 px-6">High (Linear)</td>
+                            <td className="py-4 px-6">Variable (Stacked)</td>
                         </tr>
                         <tr>
                             <td className="py-4 px-6 font-bold text-neutral-800">Error Correction</td>
                             <td className="py-4 px-6 text-emerald-700 font-medium">Rolling Hash (~25%)</td>
                             <td className="py-4 px-6">Reed-Solomon (Standard M)</td>
                             <td className="py-4 px-6 text-neutral-400">Check Digit Only</td>
+                            <td className="py-4 px-6">Reed-Solomon</td>
                         </tr>
                     </tbody>
                 </table>
@@ -328,7 +401,7 @@ export const ComparingPage: React.FC = () => {
                 <p className="text-emerald-800 text-sm leading-relaxed">
                     <strong>Surface Area Efficiency:</strong> Stripcode V9 utilizes a split-byte architecture that eliminates the need for large quiet zones required by 1D barcodes and the massive finder patterns of QR codes. 
                     <br/><br/>
-                    As shown in the data above, for short-to-medium length strings, V9 often requires significantly less vertical space than QR codes, making it ideal for <strong>edge-printing</strong> on documents or thin product spines. While 1D barcodes are horizontally efficient, they lack the data density to store complex alphanumeric strings without becoming unwieldy.
+                    As shown in the data above, for short-to-medium length strings, V9 often requires significantly less vertical space than QR codes and PDF417, making it ideal for <strong>edge-printing</strong> on documents or thin product spines. While PDF417 offers high density, its stacked linear nature often results in a taller footprint for similar data loads compared to the single-row variable width of V9. Code 128, being 1D, lacks the data density to store complex alphanumeric strings without becoming horizontally unwieldy.
                 </p>
             </div>
 
