@@ -3,8 +3,7 @@ import StripCode from './StripCode';
 
 export const ScientificPaper: React.FC = () => {
   return (
-    <div className="w-full bg-[#e8e8e8] py-12 px-4 flex justify-center font-serif text-[#000]">
-      <div className="bg-white shadow-xl w-full max-w-[816px] min-h-[1056px] p-[48px] text-[10pt] leading-[1.3]">
+    <div className="bg-white shadow-xl w-[816px] h-[1056px] p-[48px] text-[10pt] leading-[1.3] font-serif text-[#000] mx-auto overflow-hidden relative">
         
         {/* HEADER */}
         <div className="text-center mb-10">
@@ -137,7 +136,6 @@ export const ScientificPaper: React.FC = () => {
         <div className="mt-12 text-center text-[8pt] border-t border-black pt-2">
             Estratto dal Libro I dell'Iliade. Traduzione di Vincenzo Monti (1810). V9 Encoding Standard.
         </div>
-      </div>
     </div>
   );
 };

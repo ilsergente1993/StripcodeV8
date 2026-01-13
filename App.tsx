@@ -477,49 +477,72 @@ const App: React.FC = () => {
         
         {/* INDEX PAGE (USE CASES) */}
         {currentPage === 'index' && (
-            <div className="h-full overflow-y-auto bg-neutral-100 pb-20 scroll-smooth">
+            <div className="h-full overflow-y-auto bg-neutral-100 pb-20 scroll-smooth overflow-x-hidden">
                 <div className="max-w-7xl mx-auto py-12 px-4 space-y-16">
                     
                     {/* SECTION 1: FORMATTING ENGINE SLIDESHOW */}
-                    <section className="relative group/slider">
-                        <div className="text-center mb-8">
+                    <section className="relative group/slider py-12">
+                        <div className="text-center mb-16">
                             <h2 className="text-2xl font-bold text-neutral-900">Formatting Engine</h2>
                             <p className="text-neutral-500 mt-2">
                                 Substrate-compatible encoding for standard print media.
                             </p>
                         </div>
 
-                        <div className="relative overflow-hidden rounded-2xl shadow-2xl bg-neutral-200 border border-neutral-300 max-w-5xl mx-auto h-[600px]">
-                            {/* Slides Container */}
-                            <div 
-                                className="flex transition-transform duration-500 ease-in-out h-full" 
-                                style={{ transform: `translateX(-${docSlideIndex * 100}%)` }}
-                            >
-                                {docSlides.map((slide, idx) => (
-                                    <div key={idx} className="w-full flex-shrink-0 h-full overflow-y-auto bg-neutral-100 flex items-start justify-center pt-8">
-                                        {/* Scale wrapper to fit big docs in the slider view */}
-                                        <div className="transform scale-[0.65] origin-top shadow-lg">
-                                            <div className="pointer-events-none">{slide.component}</div>
+                        <div className="relative w-full flex flex-col items-center justify-center">
+                            
+                            {/* Slider Track */}
+                            <div className="flex items-center justify-center gap-8 transition-all duration-500 w-full perspective-1000 h-[800px]">
+                                
+                                {/* Previous Slide */}
+                                <div 
+                                    className="opacity-40 scale-[0.5] blur-[2px] cursor-pointer transition-all duration-500 hover:opacity-60 hover:scale-[0.55] grayscale relative z-0" 
+                                    onClick={prevDocSlide}
+                                >
+                                    <div className="pointer-events-none shadow-2xl rounded-lg overflow-hidden bg-transparent">
+                                         <div className="origin-center transform scale-[0.8]">
+                                             {docSlides[(docSlideIndex - 1 + docSlides.length) % docSlides.length].component}
+                                         </div>
+                                    </div>
+                                </div>
+
+                                {/* Active Slide */}
+                                <div className="z-10 transform scale-[0.8] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.3)] rounded-lg transition-all duration-500 bg-transparent">
+                                    <div className="pointer-events-none overflow-hidden rounded-lg">
+                                        {/* Container size matches the largest document size to ensure stability */}
+                                         <div className="flex items-center justify-center bg-transparent">
+                                             {docSlides[docSlideIndex].component}
                                         </div>
                                     </div>
+                                </div>
+
+                                {/* Next Slide */}
+                                 <div 
+                                    className="opacity-40 scale-[0.5] blur-[2px] cursor-pointer transition-all duration-500 hover:opacity-60 hover:scale-[0.55] grayscale relative z-0" 
+                                    onClick={nextDocSlide}
+                                >
+                                    <div className="pointer-events-none shadow-2xl rounded-lg overflow-hidden bg-transparent">
+                                        <div className="origin-center transform scale-[0.8]">
+                                             {docSlides[(docSlideIndex + 1) % docSlides.length].component}
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+
+                            {/* Nav Dots */}
+                            <div className="flex gap-3 mt-8">
+                                {docSlides.map((_, idx) => (
+                                    <button 
+                                        key={idx}
+                                        onClick={() => setDocSlideIndex(idx)}
+                                        className={`w-2 h-2 rounded-full transition-all duration-300 ${idx === docSlideIndex ? 'bg-emerald-500 w-6' : 'bg-neutral-300 hover:bg-neutral-400'}`}
+                                    />
                                 ))}
                             </div>
 
-                            {/* Controls */}
-                            <div className="absolute top-1/2 left-4 -translate-y-1/2 z-20">
-                                <button onClick={prevDocSlide} className="w-12 h-12 bg-white/80 backdrop-blur rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform text-neutral-800">
-                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 18l-6-6 6-6"/></svg>
-                                </button>
-                            </div>
-                            <div className="absolute top-1/2 right-4 -translate-y-1/2 z-20">
-                                <button onClick={nextDocSlide} className="w-12 h-12 bg-white/80 backdrop-blur rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform text-neutral-800">
-                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18l6-6-6-6"/></svg>
-                                </button>
-                            </div>
-
-                            {/* Label Badge */}
-                            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 bg-black/70 backdrop-blur-md text-white px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest border border-white/10">
-                                {docSlides[docSlideIndex].label}
+                            <div className="text-center mt-6">
+                                 <h3 className="text-xl font-bold text-neutral-900">{docSlides[docSlideIndex].label}</h3>
                             </div>
                         </div>
                     </section>
@@ -571,6 +594,11 @@ const App: React.FC = () => {
                         </div>
 
                     </section>
+                    
+                    {/* FOOTER */}
+                    <div className="py-8 text-center text-neutral-400 text-xs font-mono">
+                        made with &lt;3 in Italy
+                    </div>
 
                 </div>
             </div>
