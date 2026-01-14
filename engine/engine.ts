@@ -1,3 +1,4 @@
+
 // --- COSTANTI DATASHEET V9 ---
 const OVERHEAD_COLS = 11; // 3(LF) + 1(LQ) + 4(META) + 1(RQ) + 2(RF)
 const ECC_RATIO = 0.25;
@@ -242,4 +243,99 @@ export const generateStripcodeV9 = (
   });
 
   return logicalChunks;
+};
+
+// --- DECODING LOGIC ---
+
+export interface DecodedChunk {
+  index: number;
+  total: number;
+  payloadNibbles: number[];
+}
+
+export const decodeChunkFromMatrix = (matrix: boolean[][]): DecodedChunk | null => {
+  const totalCols = matrix.length;
+  // Minimal overhead check (11 cols)
+  if (totalCols < OVERHEAD_COLS) return null;
+
+  // Helper to extract nibble from R1-R4
+  const getNibble = (col: boolean[]) => {
+    let val = 0;
+    if (col[1]) val |= 8;
+    if (col[2]) val |= 4;
+    if (col[3]) val |= 2;
+    if (col[4]) val |= 1;
+    return val;
+  };
+
+  // 1. Read Metadata (Cols 4, 5, 6, 7)
+  // Indices 4,5 = Chunk Index (High, Low)
+  const idxHi = getNibble(matrix[4]);
+  const idxLo = getNibble(matrix[5]);
+  const chunkIdx = (idxHi << 4) | idxLo;
+
+  // Indices 6,7 = Total Chunks (High, Low)
+  const totHi = getNibble(matrix[6]);
+  const totLo = getNibble(matrix[7]);
+  const totalChunks = (totHi << 4) | totLo;
+
+  // 2. Identify Payload vs ECC
+  // TotalCols = Overhead(11) + Payload(N) + ECC(K)
+  // Where K = ceil(N * 0.25)
+  // UsefulSpace = N + K
+  const usefulSpace = totalCols - OVERHEAD_COLS;
+  
+  // Reverse solve for N
+  let N = Math.floor(usefulSpace / (1 + ECC_RATIO));
+  // Refine N (mimic solveCapacity logic)
+  while ((N + Math.ceil(N * ECC_RATIO)) > usefulSpace) {
+    N--;
+  }
+
+  // 3. Extract Payload Nibbles
+  const payloadNibbles: number[] = [];
+  // Payload starts at Col 8
+  for (let i = 0; i < N; i++) {
+    // Safety check
+    if (8 + i >= totalCols) break;
+    payloadNibbles.push(getNibble(matrix[8 + i]));
+  }
+
+  return {
+    index: chunkIdx,
+    total: totalChunks,
+    payloadNibbles
+  };
+};
+
+export const assembleStripcode = (chunks: DecodedChunk[]): string => {
+  if (chunks.length === 0) return "";
+  
+  // Sort by index (V9 Standard Requirement)
+  // Filter duplicates if any
+  const uniqueChunks = new Map<number, DecodedChunk>();
+  chunks.forEach(c => uniqueChunks.set(c.index, c));
+  
+  const sortedChunks = Array.from(uniqueChunks.values()).sort((a, b) => a.index - b.index);
+
+  // Note: We don't strictly enforce missing chunks logic for this simpler decoder,
+  // we just concat what we have. A production reader would flag gaps.
+  
+  let allNibbles: number[] = [];
+  sortedChunks.forEach(c => allNibbles.push(...c.payloadNibbles));
+
+  // Convert pairs of nibbles to bytes
+  let str = "";
+  for (let i = 0; i < allNibbles.length; i += 2) {
+    if (i + 1 >= allNibbles.length) break; // Should contain even nibbles
+    const hi = allNibbles[i];
+    const lo = allNibbles[i+1];
+    const charCode = (hi << 4) | lo;
+    
+    // Filtering printable ASCII for safety in this demo, though V9 supports full binary
+    if (charCode > 0) { 
+        str += String.fromCharCode(charCode);
+    }
+  }
+  return str;
 };
