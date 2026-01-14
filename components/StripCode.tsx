@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { generateStripcodeV9, StripChunk, ROWS } from '../engine';
+import { generateStripcodeV9, StripChunk, ROWS } from '../engine/engine';
 
 // --- Constants matches engine.ts ---
 const OVERHEAD_COLS = 11;
@@ -16,6 +16,7 @@ interface StripCodeProps {
   revealTextOnHover?: boolean;
   disableReflow?: boolean;
   detailedTooltip?: boolean;
+  transparentBackground?: boolean;
 }
 
 interface TooltipData {
@@ -34,6 +35,7 @@ interface ChunkCanvasProps {
   height: number;
   debugMode?: boolean;
   packetIndex: number;
+  transparentBackground?: boolean;
   onHover: (data: Omit<TooltipData, 'x' | 'y' | 'visible'> | null, e: React.MouseEvent) => void;
 }
 
@@ -115,7 +117,7 @@ const AREA_STYLES: Record<string, { fill: string, stroke: string, label: string 
     CORE_ECC_BLK:  { fill: 'rgba(168, 85, 247, 0.2)', stroke: '#9333ea', label: 'ECC' },   
 };
 
-const ChunkCanvas: React.FC<ChunkCanvasProps> = ({ chunk, height, debugMode, packetIndex, onHover }) => {
+const ChunkCanvas: React.FC<ChunkCanvasProps> = ({ chunk, height, debugMode, packetIndex, transparentBackground, onHover }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [hoverZoneId, setHoverZoneId] = useState<string | null>(null);
   
@@ -142,8 +144,16 @@ const ChunkCanvas: React.FC<ChunkCanvasProps> = ({ chunk, height, debugMode, pac
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    // Clear Logic
     ctx.clearRect(0, 0, width, height);
     
+    // Background Logic
+    if (!transparentBackground) {
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, width, height);
+    }
+    
+    // Foreground Logic (Black Bits)
     ctx.fillStyle = '#171717'; 
     chunk.forEach((col, x) => {
         col.forEach((bit, y) => {
@@ -179,7 +189,7 @@ const ChunkCanvas: React.FC<ChunkCanvasProps> = ({ chunk, height, debugMode, pac
             }
         }
     }
-  }, [chunk, height, cellSize, width, debugMode, hoverZoneId, uniqueZones]);
+  }, [chunk, height, cellSize, width, debugMode, hoverZoneId, uniqueZones, transparentBackground]);
 
   const handleMouseMove = (e: React.MouseEvent) => {
     const canvas = canvasRef.current;
@@ -215,8 +225,13 @@ const ChunkCanvas: React.FC<ChunkCanvasProps> = ({ chunk, height, debugMode, pac
     onHover(null, e);
   };
 
+  // Increased margin from p-1 to p-2 for better whitespace
+  const wrapperClass = transparentBackground 
+      ? 'inline-block p-2 align-middle hover:ring-2 ring-emerald-400/50 transition-all duration-200 rounded-sm' 
+      : 'inline-block bg-white p-2 shadow-sm hover:ring-2 ring-emerald-400/50 transition-all duration-200 align-middle rounded-sm';
+
   return (
-    <div className="inline-block bg-white p-[1px] shadow-sm hover:ring-2 ring-emerald-400/50 transition-all duration-200 align-middle">
+    <div className={wrapperClass}>
       <canvas
         ref={canvasRef}
         width={width}
@@ -302,7 +317,8 @@ const StripCode: React.FC<StripCodeProps> = ({
     verticalGap,
     revealTextOnHover = false,
     disableReflow = false,
-    detailedTooltip = true
+    detailedTooltip = true,
+    transparentBackground = false
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState<number>(0);
@@ -371,7 +387,7 @@ const StripCode: React.FC<StripCodeProps> = ({
 
   return (
     <div 
-        className={`relative group/strip ${outerLayoutClass}`}
+        className={`relative group/strip ${outerLayoutClass} p-2`} // Added p-2
         onMouseEnter={handleMouseEnter}
         onMouseLeave={() => setIsContainerHovered(false)}
     >
@@ -400,6 +416,7 @@ const StripCode: React.FC<StripCodeProps> = ({
                     debugMode={debugMode} 
                     packetIndex={index} 
                     onHover={handleChunkHover}
+                    transparentBackground={transparentBackground}
                 />
                 {showLabels && (
                     <div className={`text-[10px] font-mono mt-1 leading-none transition-colors ${debugMode ? 'text-red-500 font-bold' : 'text-neutral-300 group-hover:text-neutral-500'}`}>

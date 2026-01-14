@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import StripCode from './StripCode';
-import { generateStripcodeV9, ROWS } from '../engine/engine';
+import StripCode from '../StripCode';
+import { generateStripcodeV9, ROWS } from '../../engine/engine';
 import QRCode from 'qrcode';
-import { Barcode128 } from './barcodes/Barcode128';
-import { BarcodePDF417 } from './barcodes/BarcodePDF417';
-import { AuthenticQRCode } from './barcodes/AuthenticQRCode';
+import { Barcode128 } from '../barcodes/Barcode128';
+import { BarcodePDF417 } from '../barcodes/BarcodePDF417';
+import { AuthenticQRCode } from '../barcodes/AuthenticQRCode';
 
 export const ComparingPage: React.FC = () => {
   const [text, setText] = useState("V9_PROTOCOL_COMPARISON");

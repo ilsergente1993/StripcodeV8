@@ -1,413 +1,129 @@
-import React, { useState } from 'react';
-import { Laboratory } from './components/Laboratory';
-import { DocumentationPage } from './components/DocumentationPage';
-import { BookPage } from './components/BookPage';
-import { ScientificPaper } from './components/ScientificPaper';
-import { ComparingPage } from './components/ComparingPage';
-import StripCode from './components/StripCode';
+import React, { useState, useRef, useEffect } from 'react';
+import { LaboratoryPage } from './components/pages/LaboratoryPage';
+import { DocumentationPage } from './components/pages/DocumentationPage';
+import { ComparingPage } from './components/pages/ComparingPage';
+
+// Import extracted mockups
+import { TicketMockup } from './components/mockups/TicketMockup';
+import { ParcelMockup } from './components/mockups/ParcelMockup';
+import { BoardingPassMockup } from './components/mockups/BoardingPassMockup';
+import { SecureIDMockup } from './components/mockups/SecureIDMockup';
+import { BookMockup } from './components/mockups/BookMockup';
+import { ScientificPaperMockup } from './components/mockups/ScientificPaperMockup';
 
 type Page = 'index' | 'laboratory' | 'docs' | 'comparing';
 
-// --- MOCKUP COMPONENTS (CSS-Only) ---
+// --- MOCKUP CONFIGURATION ---
+const MOCKUP_DIMENSIONS = {
+    'ticket': { width: 700, height: 280 },
+    'parcel': { width: 300, height: 340 },
+    'boarding': { width: 750, height: 280 },
+    'id': { width: 800, height: 450 },
+    // Docs dimensions (must match the components exactly)
+    'paper': { width: 816, height: 1056 },
+    'book': { width: 600, height: 900 }
+};
 
-const TicketMockup = () => (
-    <div className="relative w-[650px] h-[260px] flex font-sans rounded-2xl overflow-hidden shadow-2xl">
-        {/* LEFT PART */}
-        <div className="flex-[2.8] bg-[#FCA549] p-6 relative flex flex-col justify-between text-[#1F2937]">
-            {/* Left Vertical Stripcode */}
-            <div className="absolute left-0 top-0 bottom-0 w-12 flex items-center justify-center border-r border-black/5 bg-[#e89843]">
-                 <div className="-rotate-90 whitespace-nowrap opacity-80 mix-blend-multiply origin-center translate-y-2">
-                     <StripCode 
-                        text="FESTIVAL_TICKET_ID_9928334_GATE_A" 
-                        height={20} 
-                        showLabels={false} 
-                        disableReflow={true} 
-                        revealTextOnHover={true}
-                        detailedTooltip={false}
-                    />
-                 </div>
-                 <div className="absolute bottom-6 left-1/2 -translate-x-1/2 -rotate-90 text-[8px] font-mono font-bold tracking-widest opacity-40 whitespace-nowrap">
-                    #882910293
-                 </div>
-            </div>
+// --- RESPONSIVE SCALER COMPONENT ---
+interface MockupScalerProps {
+    children: React.ReactNode;
+    baseWidth: number;
+    baseHeight: number;
+    id: string;
+}
 
-            <div className="pl-10 h-full flex flex-col justify-between">
-                <div>
-                    <h1 className="text-5xl font-black uppercase tracking-tight leading-[0.9] text-[#1a1a1a]">Festival<br/>Ticket</h1>
-                    <p className="mt-2 font-bold uppercase tracking-widest text-xs opacity-70">Stadium Arena</p>
-                </div>
-
-                <div className="flex items-end justify-between w-full">
-                    <div className="flex items-center gap-2">
-                        <span className="text-6xl font-black tracking-tighter text-[#1a1a1a]">20</span>
-                        <div className="flex flex-col font-bold text-xs leading-tight uppercase">
-                            <span>September</span>
-                            <span className="opacity-60">20:35</span>
-                        </div>
-                    </div>
-                    
-                    <div className="flex gap-3">
-                         <div className="border-2 border-black/10 rounded px-3 py-1 bg-black/5">
-                            <span className="block text-[9px] font-bold uppercase opacity-50">Seat</span>
-                            <span className="block text-xl font-bold leading-none">20</span>
-                         </div>
-                         <div className="border-2 border-black/10 rounded px-3 py-1 bg-black/5">
-                            <span className="block text-[9px] font-bold uppercase opacity-50">Row</span>
-                            <span className="block text-xl font-bold leading-none">03</span>
-                         </div>
-                    </div>
-                </div>
-                
-                <div className="text-[9px] font-bold uppercase opacity-40 mt-2 tracking-wide">
-                    General Admission • Non-Refundable • Rain or Shine
-                </div>
-            </div>
-        </div>
-
-        {/* PERFORATION */}
-        <div className="w-[2px] bg-[#FCA549] relative flex flex-col items-center justify-center z-10">
-             <div className="absolute top-0 bottom-0 border-l-2 border-dashed border-black/20"></div>
-             <div className="absolute -top-3 -left-2 w-5 h-5 bg-neutral-100 rounded-full shadow-inner"></div>
-             <div className="absolute -bottom-3 -left-2 w-5 h-5 bg-neutral-100 rounded-full shadow-inner"></div>
-        </div>
-
-        {/* RIGHT PART (STUB) */}
-        <div className="flex-1 bg-[#FCA549] p-5 flex flex-col relative text-[#1F2937]">
-            <div className="pr-6">
-                <h2 className="text-xl font-black uppercase leading-none text-[#1a1a1a]">Festival<br/>Ticket</h2>
-                <p className="mt-1 font-bold uppercase tracking-widest text-[9px] opacity-70">Stadium</p>
-            </div>
-
-            <div className="mt-4 flex items-center gap-1">
-                 <span className="text-3xl font-black tracking-tighter text-[#1a1a1a]">20</span>
-                 <div className="flex flex-col font-bold text-[9px] leading-tight uppercase">
-                    <span>Sept</span>
-                    <span className="opacity-60">20:35</span>
-                 </div>
-            </div>
-
-            <div className="mt-auto space-y-1 pr-6 mb-2">
-                 <div className="flex justify-between items-baseline border-b border-black/10 pb-1">
-                    <span className="text-[9px] font-bold uppercase opacity-50">Seat</span>
-                    <span className="text-sm font-bold">20</span>
-                 </div>
-                 <div className="flex justify-between items-baseline border-b border-black/10 pb-1">
-                    <span className="text-[9px] font-bold uppercase opacity-50">Row</span>
-                    <span className="text-sm font-bold">03</span>
-                 </div>
-            </div>
-            
-            {/* Right Vertical Stripcode */}
-            <div className="absolute right-2 top-0 bottom-0 w-8 flex items-center justify-center">
-                 <div className="-rotate-90 whitespace-nowrap opacity-90 mix-blend-multiply origin-center scale-75">
-                     <StripCode 
-                        text="FESTIVAL_20_SEPT_SEAT_20_ROW_03" 
-                        height={24} 
-                        showLabels={false} 
-                        disableReflow={true} 
-                        revealTextOnHover={true}
-                        detailedTooltip={false}
-                    />
-                 </div>
-            </div>
-        </div>
-    </div>
-);
-
-const ParcelMockup = () => (
-    <div className="relative w-[300px] h-[340px] bg-white border-4 border-neutral-900 flex flex-col font-sans text-neutral-900 shadow-xl overflow-hidden">
-        {/* Top Header */}
-        <div className="flex border-b-4 border-neutral-900 h-20">
-            <div className="w-20 border-r-4 border-neutral-900 flex items-center justify-center">
-                <span className="text-7xl font-bold tracking-tighter">P</span>
-            </div>
-            <div className="flex-1 flex justify-end p-2 items-center">
-                <div className="border-2 border-neutral-900 px-2 py-1 text-center text-[9px] font-bold leading-tight uppercase">
-                    U.S.<br/>POSTAGE<br/>PAID
-                </div>
-            </div>
-        </div>
-
-        {/* Service Banner */}
-        <div className="border-b-4 border-neutral-900 py-1 text-center bg-white">
-            <h2 className="text-xl font-black uppercase tracking-tighter flex items-center justify-center gap-2">
-                USPS PRIORITY MAIL <span className="text-sm border border-black rounded-full w-4 h-4 flex items-center justify-center">R</span>
-            </h2>
-        </div>
-
-        {/* Address Info */}
-        <div className="flex-1 p-3 text-[10px] font-bold relative flex flex-col">
-             <div className="absolute top-2 right-1 text-right">
-                <div className="text-lg leading-none">0004</div>
-                <div className="border-2 border-neutral-900 px-1 inline-block text-[11px] mt-1">C000</div>
-            </div>
-
-            <div className="mb-2 uppercase leading-tight text-neutral-500 text-[9px]">
-                John Doe<br/>
-                123 Main St<br/>
-                Washington, DC 20268
-            </div>
-            
-            <div className="mb-3 uppercase font-bold text-neutral-900 text-[9px]">
-                NO DELIVERY WEEKEND OR HOLIDAY
-            </div>
-
-            <div className="flex mt-2">
-                 <span className="w-12 pt-1 text-neutral-500 uppercase text-[9px]">Ship To:</span>
-                 <div className="uppercase text-xs leading-snug font-bold">
-                    John Doe<br/>
-                    John Doe Enterprises<br/>
-                    123 Main St<br/>
-                    Merrifield VA 22082
-                 </div>
-            </div>
-        </div>
-
-        {/* Tracking Section (Thick Border Top) */}
-        <div className="border-t-[4px] border-neutral-900 p-2 relative">
-             <div className="text-center font-bold text-[10px] uppercase mb-1">USPS TRACKING #</div>
-             
-             {/* Replaces Barcode - Large Stripcode with Wrapping */}
-             <div className="flex justify-center mb-1 bg-white border-y border-neutral-100 py-1 w-full px-1">
-                 <StripCode 
-                    text="9505_5120_1224_1110_0000_00_LOGISTICS_RT_009" 
-                    height={24} // Reduced height to fit multiple lines
-                    showLabels={false} 
-                    disableReflow={false} // Enable wrapping
-                    revealTextOnHover={true}
-                    detailedTooltip={false}
-                    className="grayscale"
-                />
-             </div>
-             <div className="text-center font-mono text-[10px] tracking-widest font-bold mb-1">
-                9505 5120 1224 1110 0000 00
-             </div>
-
-             {/* Footer with small QR replacement (Bottom Right) */}
-             <div className="absolute bottom-3 right-3 border border-neutral-900 p-0.5 bg-white">
-                <StripCode 
-                    text="QR_9505" 
-                    height={16} 
-                    showLabels={false} 
-                    disableReflow={true} 
-                    revealTextOnHover={true}
-                    detailedTooltip={false}
-                />
-             </div>
-        </div>
-    </div>
-);
-
-const BoardingPassMockup = () => {
-    // Longer text to demonstrate wrapping on the main ticket
-    const encodedData = "AZ0324_CDG_FCO_22MAY_1510_ROSSI_MARIO_MR_ETKT0552102897424_SEQ004_OPERATED_BY_ITA_AIRWAYS_MAIN_CABIN_CHECKED_BAGGAGE_02";
+const MockupScaler: React.FC<MockupScalerProps> = ({ children, baseWidth, baseHeight, id }) => {
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [scale, setScale] = useState(1);
+    const [pinchScale, setPinchScale] = useState(1);
     
+    // Pinch gesture state
+    const lastDist = useRef<number | null>(null);
+
+    useEffect(() => {
+        const updateScale = () => {
+            if (!containerRef.current) return;
+            const parentW = containerRef.current.offsetWidth;
+            const parentH = containerRef.current.offsetHeight;
+            const padding = 20; // Reduced padding for better fit
+            
+            const availableW = Math.max(0, parentW - padding);
+            const availableH = Math.max(0, parentH - padding);
+
+            if (availableW === 0 || availableH === 0) return;
+
+            const scaleW = availableW / baseWidth;
+            const scaleH = availableH / baseHeight;
+
+            // Fit containment
+            const fitScale = Math.min(scaleW, scaleH);
+            // Allow scaling up if screen is big, but limit huge upscaling
+            setScale(Math.min(fitScale, 1.2)); 
+        };
+
+        updateScale();
+        // Observer for smoother resizing
+        const observer = new ResizeObserver(updateScale);
+        if (containerRef.current) observer.observe(containerRef.current);
+
+        return () => observer.disconnect();
+    }, [baseWidth, baseHeight, id]);
+
+    // Touch handlers for Pinch to Zoom
+    const onTouchStart = (e: React.TouchEvent) => {
+        if (e.touches.length === 2) {
+            const dist = Math.hypot(
+                e.touches[0].pageX - e.touches[1].pageX,
+                e.touches[0].pageY - e.touches[1].pageY
+            );
+            lastDist.current = dist;
+        }
+    };
+
+    const onTouchMove = (e: React.TouchEvent) => {
+        if (e.touches.length === 2 && lastDist.current !== null) {
+            const dist = Math.hypot(
+                e.touches[0].pageX - e.touches[1].pageX,
+                e.touches[0].pageY - e.touches[1].pageY
+            );
+            const factor = dist / lastDist.current;
+            // Limit zoom levels
+            setPinchScale(prev => Math.min(Math.max(prev * factor, 1), 3)); 
+            lastDist.current = dist;
+        }
+    };
+
+    const onTouchEnd = () => {
+        lastDist.current = null;
+    };
+
+    // Reset pinch when slide changes
+    useEffect(() => {
+        setPinchScale(1);
+    }, [id]);
+
+    const totalScale = scale * pinchScale;
+
     return (
-        <div className="relative w-[720px] h-[260px] bg-white rounded-xl overflow-hidden shadow-2xl flex font-sans">
-             {/* Left (Main Ticket) */}
-             <div className="flex-[3.5] flex flex-col border-r-2 border-dashed border-neutral-200 relative overflow-hidden">
-                {/* Header */}
-                <div className="h-14 bg-[#000080] flex items-center justify-between px-6 text-white">
-                     <div className="flex items-center gap-2">
-                        <span className="font-black italic text-2xl tracking-tighter">ITA</span>
-                        <span className="font-light uppercase text-[10px] tracking-widest mt-1 opacity-80">Airways</span>
-                     </div>
-                     <div className="text-[10px] font-bold uppercase tracking-widest opacity-80">Boarding Pass</div>
-                </div>
-
-                {/* Body */}
-                <div className="p-5 flex-1 flex flex-col justify-between">
-                    <div className="flex justify-between items-start">
-                         <div>
-                            <div className="text-[9px] uppercase text-neutral-400 font-bold tracking-wide">Passenger Name</div>
-                            <div className="text-lg font-bold text-neutral-900">ROSSI / MARIO MR</div>
-                         </div>
-                         <div className="text-right">
-                            <div className="text-[9px] uppercase text-neutral-400 font-bold tracking-wide">Class</div>
-                            <div className="text-lg font-bold text-neutral-900">ECONOMY</div>
-                         </div>
-                    </div>
-
-                    <div className="flex gap-12 mt-1">
-                        <div>
-                            <div className="text-[9px] uppercase text-neutral-400 font-bold tracking-wide">From</div>
-                            <div className="text-xl font-bold text-neutral-900">PARIS <span className="text-sm font-normal text-neutral-400">CDG</span></div>
-                        </div>
-                         <div className="flex items-center pt-2 text-neutral-300">
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                         </div>
-                        <div>
-                            <div className="text-[9px] uppercase text-neutral-400 font-bold tracking-wide">To</div>
-                            <div className="text-xl font-bold text-neutral-900">ROME <span className="text-sm font-normal text-neutral-400">FCO</span></div>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-4 gap-4 mt-2 p-2 bg-neutral-50 rounded border border-neutral-100">
-                         <div>
-                            <div className="text-[8px] uppercase text-neutral-400 font-bold tracking-wide">Flight</div>
-                            <div className="text-base font-black text-neutral-900">AZ324</div>
-                         </div>
-                         <div>
-                            <div className="text-[8px] uppercase text-neutral-400 font-bold tracking-wide">Date</div>
-                            <div className="text-base font-bold text-neutral-900">22MAY</div>
-                         </div>
-                         <div>
-                            <div className="text-[8px] uppercase text-neutral-400 font-bold tracking-wide">Boarding</div>
-                            <div className="text-base font-bold text-neutral-900">14:30</div>
-                         </div>
-                         <div>
-                            <div className="text-[8px] uppercase text-neutral-400 font-bold tracking-wide">Gate</div>
-                            <div className="text-base font-black text-neutral-900">A68</div>
-                         </div>
-                    </div>
-
-                    {/* Stripcode Section - Full Width, Wrapping Enabled, Constrained Width */}
-                    <div className="mt-2 pt-2 relative border-t border-neutral-100">
-                        {/* Max Width added to prevent overflowing the flex container */}
-                        <div className="w-full max-w-[500px]">
-                            <StripCode 
-                                text={encodedData}
-                                height={24}
-                                showLabels={false}
-                                revealTextOnHover={true}
-                                detailedTooltip={false}
-                                disableReflow={false} // Allow wrapping
-                                verticalGap={4}
-                                className="grayscale opacity-90"
-                            />
-                        </div>
-                    </div>
-                </div>
-             </div>
-
-             {/* Stub (Right) */}
-             <div className="flex-1 flex flex-col bg-white min-w-[180px]">
-                <div className="h-14 bg-[#000080] flex items-center justify-center text-white">
-                    <span className="font-black italic text-lg tracking-tighter">ITA</span>
-                </div>
-                <div className="p-4 flex-1 flex flex-col">
-                    <div className="space-y-3 mb-2">
-                        <div>
-                            <div className="text-[8px] uppercase text-neutral-400 font-bold">Passenger</div>
-                            <div className="text-sm font-bold text-neutral-900 truncate">ROSSI/MARIO</div>
-                        </div>
-                        <div className="flex justify-between">
-                            <div>
-                                <div className="text-[8px] uppercase text-neutral-400 font-bold">Flight</div>
-                                <div className="text-sm font-bold text-neutral-900">AZ324</div>
-                            </div>
-                             <div>
-                                <div className="text-[8px] uppercase text-neutral-400 font-bold">Date</div>
-                                <div className="text-sm font-bold text-neutral-900">22MAY</div>
-                            </div>
-                        </div>
-                        <div>
-                            <div className="text-[8px] uppercase text-neutral-400 font-bold">Seat</div>
-                            <div className="text-2xl font-black text-neutral-900 text-center bg-neutral-100 rounded py-1">47A</div>
-                        </div>
-                    </div>
-
-                    {/* Stub Stripcode - Same text, wrapped, SMALLER HEIGHT */}
-                    <div className="mt-auto border-t border-neutral-100 pt-2 overflow-hidden">
-                         <StripCode 
-                                text={encodedData}
-                                height={12} // Reduced height
-                                showLabels={false}
-                                revealTextOnHover={true}
-                                detailedTooltip={false}
-                                disableReflow={false}
-                                verticalGap={1}
-                                className="grayscale opacity-80"
-                            />
-                    </div>
-                </div>
-             </div>
+        <div 
+            ref={containerRef} 
+            className="w-full h-full flex items-center justify-center overflow-hidden touch-none"
+            onTouchStart={onTouchStart}
+            onTouchMove={onTouchMove}
+            onTouchEnd={onTouchEnd}
+        >
+            <div style={{ 
+                width: baseWidth, 
+                height: baseHeight, 
+                transform: `scale(${totalScale})`,
+                transformOrigin: 'center center',
+                transition: lastDist.current ? 'none' : 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)' 
+            }}>
+                {children}
+            </div>
         </div>
     );
 };
-
-const SecureIDMockup = () => (
-    <div className="relative w-[450px] h-[280px] bg-white rounded-2xl overflow-hidden shadow-2xl border border-neutral-200 font-sans flex flex-col text-neutral-900">
-        
-        {/* Top Header with Stripcode - Calculated density for full width fill */}
-        <div className="pt-5 px-6 pb-4 bg-neutral-900 flex flex-col items-center relative shadow-sm">
-             <div className="w-full flex justify-center invert opacity-90">
-                <StripCode 
-                    text="S10010010019770201110201" 
-                    height={44} // Calculated height to fill ~400px width with 24 chars (approx density)
-                    showLabels={false} 
-                    disableReflow={true}
-                    revealTextOnHover={true}
-                    detailedTooltip={false}
-                />
-             </div>
-        </div>
-        
-        {/* Magnetic Stripe (Decorative) */}
-        <div className="w-full h-8 bg-[#1a1a1a] border-t border-neutral-700 relative overflow-hidden">
-             <div className="absolute top-0 right-0 bottom-0 w-24 bg-gradient-to-l from-white/10 to-transparent"></div>
-        </div>
-
-        {/* Main Content Area */}
-        <div className="flex-1 p-5 flex gap-4 bg-white relative">
-            
-            {/* Holographic Watermark Overlay */}
-            <div className="absolute right-4 bottom-4 w-20 h-20 rounded-full bg-gradient-to-tr from-emerald-100/40 to-blue-100/40 blur-2xl pointer-events-none"></div>
-
-            {/* Left Text Info */}
-            <div className="w-[140px] text-[7px] font-bold leading-[1.3] text-neutral-500 flex flex-col relative z-10">
-                <div className="flex items-center gap-1.5 mb-3">
-                    <div className="w-3 h-3 bg-red-600 rounded-[1px] shadow-sm"></div>
-                    <span className="text-[11px] font-black text-neutral-900 tracking-tight leading-none">MEDICAL<br/>ALERT</span>
-                </div>
-                
-                <div className="space-y-2 border-l-2 border-neutral-100 pl-2">
-                    <p className="uppercase">
-                        <span className="text-neutral-900">Encoded Data:</span><br/>
-                        Birth, Expiration, Revision, & Transaction Dates.
-                    </p>
-                    <p className="uppercase">
-                        <span className="text-neutral-900">Identity:</span><br/>
-                        DL/ID Card #, Name, Address, Gender.
-                    </p>
-                    <p className="uppercase">
-                        <span className="text-neutral-900">System:</span><br/>
-                        Issuing State & Inventory Control #.
-                    </p>
-                </div>
-                
-                {/* Vertical Text */}
-                <div className="absolute right-[-14px] top-10 text-xl tracking-[0.3em] origin-center rotate-90 text-neutral-100 font-black select-none pointer-events-none">
-                    SECURE
-                </div>
-            </div>
-
-            {/* Right: DENSE Stripcode Body */}
-            <div className="flex-1 flex items-start justify-center pt-1 z-10 overflow-hidden">
-                <div className="border border-neutral-100 bg-neutral-50/50 p-2 w-full rounded h-full flex items-center">
-                    <div className="w-full max-w-[200px]">
-                        <StripCode 
-                            text="MEDICAL_ALERT_SYSTEM_ID_88292_DOB_1985_05_12_EXP_2030_NO_ALLERGIES_TYPE_A_POS_DONOR_YES_CONTACT_ICE" 
-                            height={14} // Reduced height further to prevent overflow
-                            showLabels={false} 
-                            disableReflow={false} // Allow wrapping
-                            verticalGap={2} // Tiny gap between strips
-                            revealTextOnHover={true}
-                            detailedTooltip={false}
-                            className="grayscale opacity-90"
-                        />
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        {/* Bottom OCR Text */}
-        <div className="px-6 pb-3 pt-2 font-mono text-[8px] leading-tight tracking-[0.15em] text-neutral-400 uppercase border-t border-neutral-100 bg-neutral-50/30">
-            IDUSAS1001001&lt;0&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;<br/>
-            7702010F1502020USA&lt;&lt;&lt;&lt;&lt;&lt;&lt;MI&lt;0
-        </div>
-    </div>
-);
 
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>('index');
@@ -415,15 +131,15 @@ const App: React.FC = () => {
   const [mockupSlideIndex, setMockupSlideIndex] = useState(0);
 
   const docSlides = [
-      { id: 'paper', component: <ScientificPaper />, label: 'Scientific Implementation' },
-      { id: 'book', component: <BookPage />, label: 'Narrative Implementation' }
+      { id: 'paper', component: <ScientificPaperMockup />, label: 'Scientific Implementation', ...MOCKUP_DIMENSIONS.paper },
+      { id: 'book', component: <BookMockup />, label: 'Narrative Implementation', ...MOCKUP_DIMENSIONS.book }
   ];
 
   const mockupSlides = [
-      { id: 'ticket', component: <TicketMockup />, label: 'Event Ticketing', desc: 'Seamless stub integration.' },
-      { id: 'parcel', component: <ParcelMockup />, label: 'Parcel Delivery', desc: 'High-speed tracking for logistics.' },
-      { id: 'boarding', component: <BoardingPassMockup />, label: 'Boarding Pass', desc: 'Multi-line encoding for travel docs.' },
-      { id: 'id', component: <SecureIDMockup />, label: 'Medical Data Card', desc: 'High-density medical record encoding.' }
+      { id: 'ticket', component: <TicketMockup />, label: 'Event Ticketing', desc: 'Seamless stub integration.', ...MOCKUP_DIMENSIONS.ticket },
+      { id: 'parcel', component: <ParcelMockup />, label: 'Parcel Delivery', desc: 'High-speed tracking for logistics.', ...MOCKUP_DIMENSIONS.parcel },
+      { id: 'boarding', component: <BoardingPassMockup />, label: 'Boarding Pass', desc: 'Multi-line encoding for travel docs.', ...MOCKUP_DIMENSIONS.boarding },
+      { id: 'id', component: <SecureIDMockup />, label: 'Medical Data Card', desc: 'High-density medical record encoding.', ...MOCKUP_DIMENSIONS.id }
   ];
 
   const nextDocSlide = () => setDocSlideIndex((prev) => (prev + 1) % docSlides.length);
@@ -444,7 +160,7 @@ const App: React.FC = () => {
             </h1>
         </div>
         
-        <nav className="flex items-center space-x-8">
+        <nav className="hidden md:flex items-center space-x-8">
             <button 
                 onClick={() => setCurrentPage('index')}
                 className={`text-sm font-bold tracking-wide transition-colors ${currentPage === 'index' ? 'text-neutral-900 border-b-2 border-emerald-500' : 'text-neutral-500 hover:text-emerald-600'}`}
@@ -470,6 +186,11 @@ const App: React.FC = () => {
                 DOCUMENTATION
             </button>
         </nav>
+
+        {/* Mobile Simple Nav */}
+        <div className="md:hidden flex space-x-4">
+             <button onClick={() => setCurrentPage('laboratory')} className="text-xs font-bold text-emerald-600">LAB</button>
+        </div>
       </header>
 
       {/* MAIN CONTENT AREA */}
@@ -477,129 +198,117 @@ const App: React.FC = () => {
         
         {/* INDEX PAGE (USE CASES) */}
         {currentPage === 'index' && (
-            <div className="h-full overflow-y-auto bg-neutral-100 pb-20 scroll-smooth overflow-x-hidden">
-                <div className="max-w-7xl mx-auto py-12 px-4 space-y-16">
+            <div className="h-full overflow-y-auto bg-neutral-100 scroll-smooth overflow-x-hidden relative flex flex-col">
+                <div className="max-w-7xl mx-auto py-12 px-4 space-y-24 flex-1 w-full">
                     
-                    {/* SECTION 1: FORMATTING ENGINE SLIDESHOW */}
-                    <section className="relative group/slider py-12">
-                        <div className="text-center mb-16">
-                            <h2 className="text-2xl font-bold text-neutral-900">Formatting Engine</h2>
-                            <p className="text-neutral-500 mt-2">
+                    {/* SECTION 1: FORMATTING ENGINE SLIDESHOW (Rebuilt using Scaler) */}
+                    <section className="relative group/slider pt-4 pb-12">
+                        <div className="text-center mb-12">
+                            <h2 className="text-3xl font-bold text-neutral-900 tracking-tight">Formatting Engine</h2>
+                            <p className="text-neutral-500 mt-2 text-lg">
                                 Substrate-compatible encoding for standard print media.
                             </p>
                         </div>
-
-                        <div className="relative w-full flex flex-col items-center justify-center">
+                        
+                        {/* New Responsive Slider Container */}
+                        <div className="relative w-full h-[600px] bg-white rounded-2xl border border-neutral-200 shadow-sm overflow-hidden flex flex-col">
                             
-                            {/* Slider Track */}
-                            <div className="flex items-center justify-center gap-8 transition-all duration-500 w-full perspective-1000 h-[800px]">
-                                
-                                {/* Previous Slide */}
-                                <div 
-                                    className="opacity-40 scale-[0.5] blur-[2px] cursor-pointer transition-all duration-500 hover:opacity-60 hover:scale-[0.55] grayscale relative z-0" 
-                                    onClick={prevDocSlide}
+                             {/* Navigation Arrows */}
+                             <div className="absolute inset-y-0 left-0 w-20 z-30 flex items-center justify-center pointer-events-none">
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); prevDocSlide(); }}
+                                    className="pointer-events-auto w-12 h-12 bg-white/90 backdrop-blur rounded-full shadow-lg border border-neutral-100 flex items-center justify-center text-neutral-500 hover:text-neutral-900 hover:scale-110 active:scale-95 transition-all"
                                 >
-                                    <div className="pointer-events-none shadow-2xl rounded-lg overflow-hidden bg-transparent">
-                                         <div className="origin-center transform scale-[0.8]">
-                                             {docSlides[(docSlideIndex - 1 + docSlides.length) % docSlides.length].component}
-                                         </div>
-                                    </div>
-                                </div>
-
-                                {/* Active Slide */}
-                                <div className="z-10 transform scale-[0.8] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.3)] rounded-lg transition-all duration-500 bg-transparent">
-                                    <div className="pointer-events-none overflow-hidden rounded-lg">
-                                        {/* Container size matches the largest document size to ensure stability */}
-                                         <div className="flex items-center justify-center bg-transparent">
-                                             {docSlides[docSlideIndex].component}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Next Slide */}
-                                 <div 
-                                    className="opacity-40 scale-[0.5] blur-[2px] cursor-pointer transition-all duration-500 hover:opacity-60 hover:scale-[0.55] grayscale relative z-0" 
-                                    onClick={nextDocSlide}
+                                    <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 19l-7-7 7-7"/></svg>
+                                </button>
+                            </div>
+                            <div className="absolute inset-y-0 right-0 w-20 z-30 flex items-center justify-center pointer-events-none">
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); nextDocSlide(); }}
+                                    className="pointer-events-auto w-12 h-12 bg-white/90 backdrop-blur rounded-full shadow-lg border border-neutral-100 flex items-center justify-center text-neutral-500 hover:text-neutral-900 hover:scale-110 active:scale-95 transition-all"
                                 >
-                                    <div className="pointer-events-none shadow-2xl rounded-lg overflow-hidden bg-transparent">
-                                        <div className="origin-center transform scale-[0.8]">
-                                             {docSlides[(docSlideIndex + 1) % docSlides.length].component}
-                                        </div>
-                                    </div>
-                                </div>
-
+                                    <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 5l7 7-7 7"/></svg>
+                                </button>
                             </div>
 
-                            {/* Nav Dots */}
-                            <div className="flex gap-3 mt-8">
-                                {docSlides.map((_, idx) => (
-                                    <button 
-                                        key={idx}
-                                        onClick={() => setDocSlideIndex(idx)}
-                                        className={`w-2 h-2 rounded-full transition-all duration-300 ${idx === docSlideIndex ? 'bg-emerald-500 w-6' : 'bg-neutral-300 hover:bg-neutral-400'}`}
-                                    />
-                                ))}
+                            {/* Viewport for Docs */}
+                            <div className="flex-1 relative w-full overflow-hidden bg-neutral-50/50">
+                                <MockupScaler 
+                                    id={docSlides[docSlideIndex].id}
+                                    baseWidth={docSlides[docSlideIndex].width} 
+                                    baseHeight={docSlides[docSlideIndex].height}
+                                >
+                                    {docSlides[docSlideIndex].component}
+                                </MockupScaler>
                             </div>
 
-                            <div className="text-center mt-6">
-                                 <h3 className="text-xl font-bold text-neutral-900">{docSlides[docSlideIndex].label}</h3>
+                            <div className="h-14 bg-white border-t border-neutral-100 flex items-center justify-center z-30">
+                                <h3 className="text-sm font-bold text-neutral-900 uppercase tracking-widest">{docSlides[docSlideIndex].label}</h3>
                             </div>
                         </div>
                     </section>
 
-                    {/* SECTION 2: REAL WORLD APPLICATIONS */}
-                    <section>
-                         <div className="text-center mb-10">
-                            <h2 className="text-2xl font-bold text-neutral-900">Real-World Integration</h2>
-                            <p className="text-neutral-500 mt-2">
-                                High-aesthetic deployment replacing legacy QR matrices.
+                    {/* SECTION 2: REAL WORLD APPLICATIONS (RESPONSIVE SLIDER) */}
+                    <section className="pb-12 w-full">
+                         <div className="text-center mb-8 md:mb-16">
+                            <h2 className="text-2xl md:text-3xl font-bold text-neutral-900 tracking-tight">Real-World Integration</h2>
+                            <p className="text-neutral-500 mt-2 text-sm md:text-lg">
+                                High-aesthetic deployment. Pinch to zoom on mobile.
                             </p>
                         </div>
 
-                        <div className="relative max-w-4xl mx-auto h-[350px] flex items-center justify-center">
+                        <div className="relative w-full h-[350px] md:h-[500px] bg-neutral-200/50 rounded-2xl border border-neutral-200 overflow-hidden flex flex-col">
                             
-                            {/* Simple Card Slider */}
-                            <div className="flex items-center gap-8 transition-all duration-500">
-                                {/* Previous Preview */}
-                                <div className="opacity-40 scale-75 blur-[1px] cursor-pointer" onClick={prevMockupSlide}>
-                                    {mockupSlides[(mockupSlideIndex - 1 + mockupSlides.length) % mockupSlides.length].component}
-                                </div>
+                            {/* Navigation Arrows (Always Visible) */}
+                            <div className="absolute inset-y-0 left-0 w-16 z-30 flex items-center justify-center pointer-events-none">
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); prevMockupSlide(); }}
+                                    className="pointer-events-auto w-10 h-10 bg-white/90 backdrop-blur rounded-full shadow-md border border-neutral-200 flex items-center justify-center text-neutral-600 hover:text-neutral-900 hover:scale-110 active:scale-95 transition-all"
+                                >
+                                    <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 19l-7-7 7-7"/></svg>
+                                </button>
+                            </div>
 
-                                {/* Active Slide */}
-                                <div className="z-10 transform scale-100 shadow-[0_0_50px_rgba(16,185,129,0.15)] rounded-xl transition-transform duration-300">
+                            <div className="absolute inset-y-0 right-0 w-16 z-30 flex items-center justify-center pointer-events-none">
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); nextMockupSlide(); }}
+                                    className="pointer-events-auto w-10 h-10 bg-white/90 backdrop-blur rounded-full shadow-md border border-neutral-200 flex items-center justify-center text-neutral-600 hover:text-neutral-900 hover:scale-110 active:scale-95 transition-all"
+                                >
+                                    <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 5l7 7-7 7"/></svg>
+                                </button>
+                            </div>
+
+                            {/* Viewport for Mockup */}
+                            <div className="flex-1 relative w-full overflow-hidden">
+                                <MockupScaler 
+                                    id={mockupSlides[mockupSlideIndex].id}
+                                    baseWidth={mockupSlides[mockupSlideIndex].width} 
+                                    baseHeight={mockupSlides[mockupSlideIndex].height}
+                                >
                                     {mockupSlides[mockupSlideIndex].component}
+                                </MockupScaler>
+                            </div>
+                            
+                            {/* Info Bar */}
+                            <div className="h-16 bg-white border-t border-neutral-200 flex items-center justify-between px-6 z-30">
+                                <div>
+                                    <h3 className="text-sm font-bold text-neutral-900">{mockupSlides[mockupSlideIndex].label}</h3>
+                                    <p className="text-xs text-neutral-500 hidden md:block">{mockupSlides[mockupSlideIndex].desc}</p>
                                 </div>
-
-                                {/* Next Preview */}
-                                <div className="opacity-40 scale-75 blur-[1px] cursor-pointer" onClick={nextMockupSlide}>
-                                    {mockupSlides[(mockupSlideIndex + 1) % mockupSlides.length].component}
+                                <div className="flex gap-2">
+                                    {mockupSlides.map((_, idx) => (
+                                        <div key={idx} className={`h-1.5 rounded-full transition-colors ${idx === mockupSlideIndex ? 'bg-emerald-500 w-6' : 'bg-neutral-300 w-1.5'}`} />
+                                    ))}
                                 </div>
                             </div>
 
-                             {/* Mobile/Quick Nav Dots */}
-                             <div className="absolute bottom-0 left-1/2 -translate-x-1/2 flex gap-3">
-                                {mockupSlides.map((_, idx) => (
-                                    <button 
-                                        key={idx}
-                                        onClick={() => setMockupSlideIndex(idx)}
-                                        className={`w-2 h-2 rounded-full transition-colors ${idx === mockupSlideIndex ? 'bg-emerald-500' : 'bg-neutral-300'}`}
-                                    />
-                                ))}
-                             </div>
                         </div>
-                        
-                        <div className="text-center mt-4">
-                            <h3 className="text-lg font-bold text-neutral-800">{mockupSlides[mockupSlideIndex].label}</h3>
-                            <p className="text-sm text-neutral-500">{mockupSlides[mockupSlideIndex].desc}</p>
-                        </div>
-
                     </section>
-                    
-                    {/* FOOTER */}
-                    <div className="py-8 text-center text-neutral-400 text-xs font-mono">
-                        made with &lt;3 in Italy
-                    </div>
+                </div>
 
+                {/* FOOTER - Explicitly at bottom of scroll container */}
+                <div className="mt-auto py-12 text-center text-neutral-400 text-xs font-mono border-t border-neutral-200 bg-neutral-100">
+                    made with &lt;3 in Italy
                 </div>
             </div>
         )}
@@ -611,7 +320,7 @@ const App: React.FC = () => {
 
         {/* LABORATORY PAGE */}
         {currentPage === 'laboratory' && (
-            <Laboratory />
+            <LaboratoryPage />
         )}
 
         {/* DOCUMENTATION PAGE */}
