@@ -1,5 +1,6 @@
 {
   "name": "Stripcode V9 Generator",
   "description": "A high-performance optical barcode generator based on the Stripcode V9 protocol. Features Absolute Position Tracking and Dynamic Sequence Markers.",
+  "revision": 1,
   "requestFramePermissions": []
 }
